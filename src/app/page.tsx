@@ -7,6 +7,7 @@ import { ICONS } from "@/lib/icons";
 import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
+const MAIN_SEARCH = "https://showday.kr/search";
 const SEOUL = { lat: 37.5665, lng: 126.978 };
 
 const DISTRICTS: Record<string, [number, number]> = {
@@ -195,6 +196,7 @@ export default function Page() {
   const [cat, setCat] = useState("전체");
   const [time, setTime] = useState("");
   const [pop, setPop] = useState<CatKey | null>(null);
+  const [routeMode, setRouteMode] = useState<"easy" | "accessible" | "walk" | "rest" | null>(null);
   const [theme, setTheme] = useState("");
   const [scope, setScope] = useState<"area" | "all">("area");
   const [stories, setStories] = useState<{ id: string; configured: boolean; items: Story[] } | null>(null);
@@ -514,7 +516,7 @@ export default function Page() {
               ...(origin?.label && origin.label !== "내 위치" ? { d: origin.label } : {}),
               from: "map",
             });
-            window.location.assign(`${MAIN_SITE}/?${params.toString()}#shows`);
+            window.location.href = `${MAIN_SEARCH}?${params.toString()}`;
           }}
         >공연검색</button>
       </div>
@@ -672,46 +674,40 @@ export default function Page() {
         </div>
       </aside>
 
-      <div className="sm-dock" aria-label="유형 바로가기">
-        {CAT_ORDER.map((k) => (
-          <button
-            key={k}
-            className={`${cat === k ? "on" : ""}${pop === k ? " open" : ""}`}
-            style={{ ["--c" as any]: CAT_META[k].color, ["--s" as any]: CAT_META[k].soft }}
-            aria-label={CAT_META[k].label}
-            onClick={() => setPop(pop === k ? null : k)}
-          >
-            <span><Ico n={CAT_META[k].ico} size={22} /></span>
-            <em>{CAT_META[k].label.split("·")[0]}</em>
+      <div className="sm-route-dock" aria-label="SHOWDAY 편한 이동">
+        <div className="sm-route-dock-title">SHOWDAY<br/><b>ROUTE</b></div>
+        {[
+          ["easy", "🚶", "편한 길"],
+          ["accessible", "♿", "무장애"],
+          ["walk", "🌳", "걷기 좋은 길"],
+          ["rest", "🪑", "쉬어가기"],
+        ].map(([key, icon, label]) => (
+          <button key={key} className={routeMode === key ? "on" : ""} onClick={() => setRouteMode(routeMode === key ? null : key as any)}>
+            <span>{icon}</span><em>{label}</em>
           </button>
         ))}
       </div>
 
-      {pop && (
-        <div className="sm-pop" style={{ ["--c" as any]: CAT_META[pop].color }} role="dialog" aria-label={`${CAT_META[pop].label} 테마`}>
-          <div className="sm-pop-h">
+      {routeMode && (
+        <div className="sm-route-pop" role="dialog" aria-label="SHOWDAY ROUTE 안내">
+          <div className="sm-route-pop-h">
             <div>
-              <b><Ico n={CAT_META[pop].ico} size={17} /> {CAT_META[pop].label}</b>
-              <small>{scope === "all" ? "서울 전체" : origin ? `${origin.label} · 반경 ${radius >= 99 ? "전체" : radius + "km"}` : "지도에 보이는 범위"}</small>
+              <small>SHOWDAY ROUTE</small>
+              <b>{routeMode === "easy" ? "편하게 이동하고 싶어요" : routeMode === "accessible" ? "무장애 이동 정보를 확인해요" : routeMode === "walk" ? "걷기 좋은 길을 찾아요" : "중간에 쉬어갈 곳을 찾아요"}</b>
             </div>
-            <div className="sm-pop-x">
-              <button aria-label="공유" onClick={() => share()}><Ico n="link" size={15} /></button>
-              <button onClick={() => setPop(null)}>끄기</button>
+            <button onClick={() => setRouteMode(null)} aria-label="닫기">×</button>
+          </div>
+          <p>{routeMode === "easy" ? "계단·급경사 부담을 줄이고 휴식하기 편한 이동을 우선합니다." : routeMode === "accessible" ? "휠체어·보행보조기 이용자는 확인된 접근성 정보만 참고할 수 있도록 구성합니다. 미확인 구간은 가능하다고 표시하지 않습니다." : routeMode === "walk" ? "공원·하천·숲길처럼 걷기 좋은 공간과 문화행사를 함께 찾는 기능입니다." : "벤치·화장실·카페 등 쉬어갈 수 있는 장소를 문화생활과 함께 찾는 기능입니다."}</p>
+          {selected ? (
+            <div className="sm-route-selected">
+              <span>선택한 장소</span><b>{selected.venue || selected.title}</b>
+              <div>
+                <a href={`https://map.kakao.com/link/to/${encodeURIComponent(selected.venue || selected.title)},${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a>
+                <a href={`https://map.naver.com/p/search/${encodeURIComponent(selected.venue || selected.title)}`} target="_blank" rel="noopener noreferrer">네이버 지도</a>
+              </div>
             </div>
-          </div>
-          <div className="sm-seg two" role="group" aria-label="범위">
-            <button className={scope === "area" ? "on" : ""} onClick={() => setScope("area")}>이 지역 {CAT_META[pop].label.split("·")[0]}</button>
-            <button className={scope === "all" ? "on" : ""} onClick={() => setScope("all")}>서울 전체</button>
-          </div>
-          <button className={`sm-theme all${cat === pop && !theme ? " on" : ""}`} onClick={() => { setCat(pop); setTheme(""); setSelectedId(null); }}>모든 테마</button>
-          <div className="sm-theme-grid">
-            {THEMES[pop].map(([label]) => (
-              <button key={label} className={`sm-theme${cat === pop && theme === label ? " on" : ""}`} onClick={() => { setCat(pop); setTheme(label); setSelectedId(null); }}>{label}</button>
-            ))}
-          </div>
-          <button className="sm-theme only" onClick={() => { setCat(pop); setTheme(""); setSelectedId(null); setPop(null); }}>
-            {CAT_META[pop].label.split("·")[0]}만 보기
-          </button>
+          ) : <p className="sm-route-tip">지도에서 공연·전시·체험 장소를 하나 선택하면 이동 경로를 바로 확인할 수 있어요.</p>}
+          <div className="sm-route-safety">※ 경사·계단·휠체어 통행 가능 여부는 현장과 지도 제공자의 최신 정보를 반드시 함께 확인해 주세요.</div>
         </div>
       )}
 
