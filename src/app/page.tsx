@@ -197,6 +197,7 @@ export default function Page() {
   const [time, setTime] = useState("");
   const [pop, setPop] = useState<CatKey | null>(null);
   const [routeMode, setRouteMode] = useState<"easy" | "accessible" | "walk" | "rest" | null>(null);
+  const [avoid, setAvoid] = useState<string[]>([]);
   const [theme, setTheme] = useState("");
   const [scope, setScope] = useState<"area" | "all">("area");
   const [stories, setStories] = useState<{ id: string; configured: boolean; items: Story[] } | null>(null);
@@ -674,43 +675,69 @@ export default function Page() {
         </div>
       </aside>
 
-      <aside className="sm-now-panel" aria-label="SHOWDAY 추천">
-        <div className="sm-now-head">
-          <small>SHOWDAY PICK</small>
-          <b>{selected ? "이곳과 함께" : "지금 뭐 하지?"}</b>
-          <span>{weather?.emoji || "✦"} {weather?.label ? `${weather.label}${weather.temp != null ? ` ${Math.round(weather.temp)}°` : ""} · ` : ""}지금 상황에 맞춰 골라보세요.</span>
-        </div>
-
+      <aside className="sm-now-panel sm-now-v3" aria-label="SHOWDAY NOW">
         {selected ? (
-          <div className="sm-now-selected">
-            <strong>{selected.venue || selected.title}</strong>
-            <button onClick={() => setRouteMode(routeMode === "easy" ? null : "easy")}>🚶 <span>편한 길</span></button>
-            <button onClick={() => setRouteMode(routeMode === "accessible" ? null : "accessible")}>♿ <span>이동 편의</span></button>
-            <button onClick={() => setRouteMode(routeMode === "walk" ? null : "walk")}>🌳 <span>주변 산책</span></button>
-            <button onClick={() => setRouteMode(routeMode === "rest" ? null : "rest")}>🪑 <span>쉬어가기</span></button>
-          </div>
-        ) : (
           <>
-            <section className="sm-now-section">
-              <div className="sm-now-title"><b>지금부터</b><em>시간으로 찾기</em></div>
-              <div className="sm-now-time">
-                {[['1h','1시간'],['3h','3시간'],['half','반나절']].map(([v,l]) => <button key={v} className={time===v?'on':''} onClick={() => setTime(time===v?'':v)}>{l}</button>)}
+            <div className="sm-now-head decision">
+              <small>SHOWDAY NOW</small>
+              <b>여기, 지금 갈까?</b>
+              <span>확인된 정보만 모아 지금 선택하기 쉽게 보여드려요.</span>
+            </div>
+            <div className="sm-decision-card">
+              <strong>{selected.title}</strong>
+              <div className="sm-decision-facts">
+                {selected.isFree && <span>✓ 관람료 0원</span>}
+                {isIndoor(selected) && <span>✓ 실내</span>}
+                {selected.dateText && <span>✓ {selected.dateText}</span>}
+                {selDist != null && <span>✓ {fmtDist(selDist)} 거리</span>}
+                {!selected.bookingUrl && !selected.officialUrl && <span className="check">? 공식 안내 확인 필요</span>}
               </div>
-            </section>
-            <section className="sm-now-section">
-              <div className="sm-now-title"><b>편하게 가기</b><em>이동 부담 고려</em></div>
+              <div className="sm-now-suggest">
+                <small>SHOWDAY 제안</small>
+                <p>{weather?.bad && !isIndoor(selected) ? "날씨 영향을 받을 수 있는 장소예요. 실내 대안도 함께 확인해 보세요." : selected.isFree ? "비용 부담 없이 일정에 넣기 좋은 선택이에요. 운영시간은 출발 전에 확인해 주세요." : "일정과 이동거리를 확인한 뒤 오늘 동선에 넣어보세요."}</p>
+              </div>
+              <div className="sm-decision-actions">
+                {link ? <a href={link} target="_blank" rel="noopener noreferrer">공식 안내</a> : <button onClick={() => setRouteMode("easy")}>이동 확인</button>}
+                <button onClick={() => setSelectedId(null)}>다른 곳 보기</button>
+              </div>
+            </div>
+            <section className="sm-now-section compact">
+              <div className="sm-now-title"><b>이곳과 함께</b><em>주변까지</em></div>
               <div className="sm-now-grid">
                 <button onClick={() => setRouteMode("easy")}>🚶 <span>편한 길</span></button>
                 <button onClick={() => setRouteMode("accessible")}>♿ <span>이동 편의</span></button>
+                <button onClick={() => setRouteMode("walk")}>🌳 <span>주변 산책</span></button>
+                <button onClick={() => setRouteMode("rest")}>🪑 <span>쉬어가기</span></button>
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            <div className="sm-now-head">
+              <small>SHOWDAY NOW</small>
+              <b>오늘의 빈칸을 채워볼까요?</b>
+              <span>{weather?.emoji || "✦"} {weather?.label ? `${weather.label}${weather.temp != null ? ` ${Math.round(weather.temp)}°` : ""} · ` : ""}남는 시간에 맞는 문화생활을 골라드려요.</span>
+            </div>
+            <section className="sm-now-section hero">
+              <div className="sm-now-title"><b>얼마나 시간이 있나요?</b><em>TIME MAP</em></div>
+              <div className="sm-now-time">
+                {[['1h','1시간'],['3h','3시간'],['half','반나절']].map(([v,l]) => <button key={v} className={time===v?'on':''} onClick={() => setTime(time===v?'':v)}>{l}</button>)}
+              </div>
+              <button className="sm-fill-time" onClick={() => { if (!time) setTime('3h'); setSelectedId(null); }}>✦ 내 시간 채우기</button>
+              {course.length > 0 && <div className="sm-mini-course">{course.slice(0,3).map((x:any,i:number)=><button key={x.e.id} onClick={()=>pick(x.e)}><i>{i+1}</i><span><b>{x.e.title}</b><em>{x.e.isFree?'무료 · ':''}{x.e.venue || x.e.address || '장소 확인'}</em></span></button>)}</div>}
+            </section>
+            <section className="sm-now-section">
+              <div className="sm-now-title"><b>오늘은 뭘 피하고 싶으세요?</b><em>반대로 찾기</em></div>
+              <div className="sm-avoid">
+                {[['walk','많이 걷기'],['money','돈 쓰기'],['outdoor','야외'],['booking','예약']].map(([v,l]) => <button key={v} className={avoid.includes(v)?'on':''} onClick={() => { setAvoid(a=>a.includes(v)?a.filter(x=>x!==v):[...a,v]); if(v==='money') setWhen(w=>w.includes('free')?w:[...w,'free']); if(v==='outdoor') setWhen(w=>w.includes('indoor')?w:[...w,'indoor']); if(v==='booking') setWhen(w=>w.includes('walkin')?w:[...w,'walkin']); if(v==='walk') setRadius(r=>r===99?3:Math.min(r,3)); }}>{l}</button>)}
               </div>
             </section>
             <section className="sm-now-section">
-              <div className="sm-now-title"><b>오늘의 발견</b><em>놓치지 마세요</em></div>
-              <button className="sm-now-row" onClick={() => { setWhen(when.includes('free') ? when.filter(x=>x!=='free') : [...when,'free']); setSelectedId(null); }}><span>0원으로 즐기기</span><strong>{events.filter(e=>e.isFree).length}곳</strong></button>
-              <button className="sm-now-row" onClick={() => { const today=seoulToday(); const soon=[...events].filter(e=>e.endDate && e.endDate.slice(0,10)>=today).sort((a,b)=>(a.endDate||'').localeCompare(b.endDate||''))[0]; if(soon) pick(soon); }}><span>놓치기 전에</span><strong>곧 끝나는 일정 →</strong></button>
+              <div className="sm-now-title"><b>놓치기 전에</b><em>ENDING SOON</em></div>
+              <button className="sm-now-row" onClick={() => { const today=seoulToday(); const soon=[...events].filter(e=>e.endDate && e.endDate.slice(0,10)>=today).sort((a,b)=>(a.endDate||'').localeCompare(b.endDate||''))[0]; if(soon) pick(soon); }}><span>이번 주 끝나는 일정부터 보기</span><strong>→</strong></button>
             </section>
             <section className="sm-now-section surprise">
-              <button className="sm-surprise" onClick={() => { const pool=results.map(x=>x.e); if(pool.length) pick(pool[Math.floor(Math.random()*pool.length)]); }}><span>✦</span><div><b>뜻밖의 발견</b><em>지도 안에서 한 곳 골라드려요</em></div><strong>→</strong></button>
+              <button className="sm-surprise" onClick={() => { const pool=results.map(x=>x.e); if(pool.length) pick(pool[Math.floor(Math.random()*pool.length)]); }}><span>✦</span><div><b>뜻밖의 발견</b><em>평소 지나쳤던 곳 하나 골라보기</em></div><strong>→</strong></button>
             </section>
           </>
         )}
