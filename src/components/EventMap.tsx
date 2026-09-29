@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadKakaoMaps } from "@/lib/kakaoMapLoader";
 
-export type MapPoint = { id: string; lat: number; lng: number; title: string; imageUrl?: string };
+export type MapPoint = { id: string; lat: number; lng: number; title: string; imageUrl?: string; category?: string; isFree?: boolean };
 export type Bounds = { swLat: number; swLng: number; neLat: number; neLng: number };
 export type EventMapHandle = {
   panTo: (lat: number, lng: number, level?: number) => void;
@@ -152,15 +152,24 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       el.type = "button";
       el.className = `sm-pin${selected ? " sel" : ""}`;
       el.setAttribute("aria-label", p.title);
+      const category = p.category || "기타";
+      const icon = /체험|교육|배움/.test(category) ? "🧑‍🎨" : /전시/.test(category) ? "🎨" : /축제|행사/.test(category) ? "🎪" : /공연|콘서트|뮤지컬|연극|클래식|무용|국악/.test(category) ? "🎭" : "📍";
+      const badge = document.createElement("span");
+      badge.className = "sm-pin-badge";
+      badge.textContent = `${icon} ${category.replace("·지역행사", "").replace("·교육", "")}`;
+      el.appendChild(badge);
+      if (p.isFree) { const free = document.createElement("span"); free.className = "sm-pin-free"; free.textContent = "0원"; el.appendChild(free); }
       if (p.imageUrl) {
         const img = document.createElement("img");
         img.src = p.imageUrl;
         img.alt = "";
         img.loading = "lazy";
+        img.referrerPolicy = "no-referrer";
+        img.onerror = () => { img.remove(); el.classList.add("noimg"); const f = document.createElement("span"); f.className = "sm-pin-icon"; f.textContent = icon; el.appendChild(f); };
         el.appendChild(img);
       } else {
         el.classList.add("noimg");
-        el.textContent = "★";
+        const f = document.createElement("span"); f.className = "sm-pin-icon"; f.textContent = icon; el.appendChild(f);
       }
       el.addEventListener("click", () => onSelectRef.current(p.id));
       return new kakao.maps.CustomOverlay({

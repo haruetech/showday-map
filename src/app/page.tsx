@@ -14,7 +14,7 @@ const DISTRICTS: Record<string, [number, number]> = {
 const RADII: [number, string][] = [[3, "3km"], [5, "5km"], [10, "10km"], [99, "서울 전체"]];
 const CATS: [string, string][] = [["전체", "전체"], ["공연", "🎤 공연"], ["전시", "🎨 전시"], ["축제", "🎪 축제·행사"], ["체험", "🧑‍🎨 체험·배움"]];
 const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "무료"], ["indoor", "🏠 실내"]];
-const AUDIENCES = ["전체", "아이·가족", "어른", "시니어"];
+const AUDIENCES = ["전체", "혼자", "부부·친구", "부모님과", "가족과"];
 
 type Origin = { lat: number; lng: number; label: string };
 
@@ -42,12 +42,22 @@ function audienceMatch(e: ShowdayEvent, a: string) {
   if (a === "전체") return true;
   const t = [e.target, e.ageText, e.title, e.subcategory].join(" ");
   const kid = e.familyAllowed === true || KID_RE.test(t);
-  if (a === "아이·가족") return kid;
-  if (a === "시니어") return SENIOR_RE.test(t);
-  return !kid || /전체|성인|누구나|전 연령|전연령/.test(t);
+  if (a === "가족과") return kid;
+  if (a === "부모님과") return SENIOR_RE.test(t) || /전체|성인|누구나|전 연령|전연령/.test(t);
+  // 혼자/부부·친구는 별도 제한 데이터가 거의 없으므로 아동 전용만 제외한다.
+  if (a === "혼자" || a === "부부·친구") return !kid || /전체|성인|누구나|전 연령|전연령/.test(t);
+  return true;
 }
 // 실내 여부: 출처 데이터에 실내/야외 구분이 없어 장소·제목 키워드로 판별한다(모르는 경우는 실내로 보지 않음).
 const INDOOR_RE = /박물관|미술관|도서관|전시|공연장|극장|아트|센터|홀|체험관|문화관|회관|갤러리|콘서트|뮤지컬|연극|클래식|교육|강좌|스튜디오|기념관|과학관|문화원|예술/;
+function catIcon(e: ShowdayEvent) {
+  const t = `${e.subcategory || ""} ${e.category || ""}`;
+  if (/체험|교육|배움|강좌/.test(t)) return "🧑‍🎨";
+  if (/전시/.test(t)) return "🎨";
+  if (/축제|행사/.test(t)) return "🎪";
+  if (/공연|콘서트|뮤지컬|연극|클래식|무용|국악/.test(t)) return "🎭";
+  return "📍";
+}
 function isIndoor(e: ShowdayEvent) {
   const t = [e.venue, e.address, e.title, e.subcategory, e.category].join(" ");
   if (/야외|둘레길|산책|캠핑|한강|공원 내|숲길/.test(t) && !/실내/.test(t)) return false;
@@ -79,6 +89,7 @@ export default function Page() {
   const [audience, setAudience] = useState("전체");
   const [q, setQ] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [timeMode, setTimeMode] = useState("3시간");
 
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -209,7 +220,7 @@ export default function Page() {
   }, [filtered, origin, radius, bounds]);
 
   const points = useMemo(
-    () => (origin ? results : filtered.map((e) => ({ e }))).map((x) => ({ id: x.e.id, lat: x.e.lat!, lng: x.e.lng!, title: x.e.title, imageUrl: x.e.imageUrl })),
+    () => (origin ? results : filtered.map((e) => ({ e }))).map((x) => ({ id: x.e.id, lat: x.e.lat!, lng: x.e.lng!, title: x.e.title, imageUrl: x.e.imageUrl, category: x.e.subcategory || x.e.category, isFree: x.e.isFree })),
     [results, filtered, origin]
   );
 
@@ -249,20 +260,34 @@ export default function Page() {
       <aside className="sm-panel">
         <div className="sm-head">
           <div className="sm-brand">SHOWDAY<small>MAP</small></div>
-          <h1>내 근처, 오늘 뭐 하지?</h1>
+          <h1>오늘, 어떻게 보내고 싶으세요?</h1>
+          <p className="sm-subtitle">공연부터 체험·전시·축제까지, 지금의 날씨와 시간에 맞춰 찾아드려요.</p>
           {weather?.ok && (
             <div className={`sm-weather${weather.bad ? " bad" : ""}`}>
               <span className="w">{weather.emoji} {weather.label} {weather.temp}°</span>
               <span className="m">
                 {weather.bad
-                  ? when.includes("indoor") ? "비·눈이 와서 실내 행사 위주로 보여드려요" : "비·눈 소식이 있어요"
-                  : "야외 나들이도 좋아요"}
+                  ? when.includes("indoor") ? "비가 오네요. 실내에서 즐길 수 있는 곳을 먼저 보여드려요" : "비·눈 소식이 있어요"
+                  : "날씨가 좋아요. 공연과 야외 나들이를 함께 살펴보세요"}
               </span>
               {weather.bad && (
                 <button onClick={() => toggleWhen("indoor")}>{when.includes("indoor") ? "실내만 해제" : "실내만 보기"}</button>
               )}
             </div>
           )}
+        </div>
+
+        <div className="sm-block sm-life">
+          <div className="sm-label">지금부터 얼마나 즐길까요?</div>
+          <div className="sm-chips sm-timechips">
+            {["1시간","3시간","반나절","하루"].map((t) => <button key={t} className={timeMode === t ? "on" : ""} onClick={() => setTimeMode(t)}>{t}</button>)}
+          </div>
+          <div className="sm-quick">
+            <button className={when.includes("free") ? "on" : ""} onClick={() => toggleWhen("free")}><b>0원</b><span>무료로</span></button>
+            <button className={when.includes("indoor") ? "on" : ""} onClick={() => toggleWhen("indoor")}><b>☂️</b><span>실내</span></button>
+            <button className={cat === "공연" ? "on" : ""} onClick={() => setCat(cat === "공연" ? "전체" : "공연")}><b>🎭</b><span>문화</span></button>
+            <button className={cat === "체험" ? "on" : ""} onClick={() => setCat(cat === "체험" ? "전체" : "체험")}><b>🧑‍🎨</b><span>체험·배움</span></button>
+          </div>
         </div>
 
         <div className="sm-block">
@@ -326,7 +351,7 @@ export default function Page() {
             {results.slice(0, 80).map(({ e, d }) => (
               <li key={e.id}>
                 <button className={e.id === selectedId ? "on" : ""} onClick={() => pick(e)}>
-                  {e.imageUrl ? <img src={e.imageUrl} alt="" loading="lazy" /> : <span className="ph">★</span>}
+                  {e.imageUrl ? <img src={e.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(ev) => { ev.currentTarget.style.display = "none"; }} /> : <span className="ph">{catIcon(e)}</span>}
                   <span className="t">
                     <span className="meta">
                       {d != null && <i className="dist">{fmtDist(d)}</i>}
@@ -347,7 +372,7 @@ export default function Page() {
       {selected && (
         <div className="sm-card">
           <button className="x" aria-label="닫기" onClick={() => setSelectedId(null)}>×</button>
-          {selected.imageUrl ? <img src={selected.imageUrl} alt="" /> : <div className="ph" />}
+          {selected.imageUrl ? <img src={selected.imageUrl} alt="" referrerPolicy="no-referrer" onError={(ev) => { ev.currentTarget.style.display = "none"; }} /> : <div className="ph">{catIcon(selected)}</div>}
           <div>
             <span className="tag">{selected.subcategory || selected.category}</span>
             <h3>{selected.title}</h3>

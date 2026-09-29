@@ -109,3 +109,20 @@ button{cursor:pointer;border:0;background:none}
   .sm-loc{right:10px;top:160px;bottom:auto}
   .sm-card{left:8px;right:8px;top:58px;bottom:auto;width:auto;min-width:0}
 }
+
+/* LIFE MAP 2.0 — 오늘하루의 빠른 탐색 장점을 SHOWDAY 전체 이용자용으로 확장 */
+.sm-subtitle{margin:7px 0 0;font-size:12px;line-height:1.55;color:var(--muted);font-weight:650}
+.sm-life{padding-top:10px}
+.sm-timechips button{flex:1;min-width:0}
+.sm-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+.sm-quick button{min-height:62px;padding:7px 3px;border:1px solid var(--line);border-radius:14px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.sm-quick button b{font-size:18px;line-height:1}.sm-quick button span{font-size:10px;font-weight:850;color:var(--muted)}
+.sm-quick button.on{border-color:var(--gold);background:#fff1e6;box-shadow:0 0 0 1px var(--gold) inset}.sm-quick button.on span{color:var(--gold)}
+.sm-weather{margin-top:10px;padding:10px 12px;border:1px solid #ead9c9;border-radius:14px;background:#fff;display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}
+.sm-weather .w{font-size:12px;font-weight:900}.sm-weather .m{font-size:11px;line-height:1.4;color:var(--muted)}.sm-weather button{grid-column:1/-1;justify-self:start;margin-top:3px;padding:5px 9px;border-radius:999px;background:#f5eee7;color:var(--gold);font-size:10px;font-weight:900}.sm-weather.bad{background:#eef7ff;border-color:#cfe5f6}
+.sm-pin{overflow:visible}
+.sm-pin-badge{position:absolute;z-index:4;left:50%;bottom:-24px;transform:translateX(-50%);max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 7px;border-radius:999px;background:#fff;color:#3c241b;box-shadow:0 3px 10px rgba(60,36,27,.2);font-size:9px;font-weight:900;pointer-events:none}
+.sm-pin-free{position:absolute;z-index:5;right:-7px;top:-7px;padding:3px 5px;border-radius:999px;background:#126b45;color:#fff;font-size:8px;font-weight:900;box-shadow:0 2px 7px rgba(0,0,0,.18)}
+.sm-pin-icon{position:relative;z-index:2;font-size:24px}.sm-pin.noimg{background:#fff7ee;color:var(--paper);border:2px solid var(--gold)}.sm-pin.noimg::after{background:#fff7ee}
+.sm-list .ph,.sm-card .ph{display:flex;align-items:center;justify-content:center;font-size:25px;background:#fff1e6}
+@media (max-width:768px){.sm-quick{gap:5px}.sm-quick button{min-height:56px}.sm-subtitle{display:none}.sm-weather .m{font-size:10px}}
