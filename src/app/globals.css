@@ -321,3 +321,31 @@ button{cursor:pointer;border:0;background:none}
 .sm-route-pop-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.sm-route-pop-h small{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;color:#315ee8}.sm-route-pop-h b{display:block;margin-top:4px;font-size:17px;color:#172b4d}.sm-route-pop-h button{width:32px;height:32px;border-radius:50%;background:#f2f4f7;font-size:20px}.sm-route-pop>p{margin:12px 0;font-size:13px;line-height:1.6;color:#475467}
 .sm-route-selected{padding:12px;border-radius:14px;background:#f8fafc}.sm-route-selected>span{display:block;font-size:10px;color:#667085}.sm-route-selected>b{display:block;margin:3px 0 9px;font-size:13px;color:#172b4d}.sm-route-selected>div{display:grid;grid-template-columns:1fr 1fr;gap:7px}.sm-route-selected a{padding:9px 6px;border-radius:10px;background:#172b4d;color:#fff;text-align:center;text-decoration:none;font-size:11px;font-weight:800}.sm-route-tip{padding:11px;border-radius:12px;background:#f8fafc!important}.sm-route-safety{margin-top:11px;padding-top:10px;border-top:1px solid #eaecf0;font-size:10px;line-height:1.5;color:#667085}
 @media(max-width:720px){.sm-route-dock{right:10px;top:210px;transform:none;padding:5px}.sm-route-dock-title{display:none}.sm-route-dock button{width:48px;min-height:46px}.sm-route-dock button span{font-size:17px}.sm-route-dock button em{font-size:8px}.sm-route-pop{left:8px;right:66px;top:210px;transform:none;width:auto}}
+
+/* SHOWDAY MAP 2.8 — 상세 정보 구조/후기/액션 리디자인 */
+.sm-detail{border-radius:18px;background:#fff;box-shadow:0 18px 52px rgba(15,23,42,.20);border:1px solid rgba(15,23,42,.08)}
+.sm-detail-x{background:#f4f6f8;color:#1f2937}
+.sm-detail-body{padding:22px 22px 14px}
+.sm-detail-kicker{color:#4b5563;font-size:11px;letter-spacing:.02em}
+.sm-detail h2{color:#111827;font-size:23px;letter-spacing:-.035em}
+.sm-detail-place{color:#667085;font-size:12px;line-height:1.55}
+.sm-tags{gap:5px;margin:10px 0 14px}
+.sm-tags .tg,.sm-tags .tg.type,.sm-tags .tg.free,.sm-tags .tg.ok,.sm-tags .tg.st.live,.sm-tags .tg.st.soon,.sm-tags .tg.st.end{padding:4px 8px;border:1px solid #e5e7eb;border-radius:7px;background:#fff;color:#475467;font-size:10px;font-weight:750}
+.sm-tags .tg.type{color:#111827}.sm-tags .tg.free{color:#0f766e}.sm-tags .tg.st.live{color:#b42318}.sm-tags .tg.st.soon{color:#9a6700}.sm-tags .tg.st.end{color:#667085}
+.sm-detail .dimg{border-radius:12px;background:#f5f6f7}
+.sm-detail h3{margin-top:22px;padding-top:18px;border-color:#eaecf0;color:#172033;font-size:15px;letter-spacing:-.015em}
+.sm-desc{color:#344054;font-size:13px;line-height:1.75}
+.sm-kv>div{grid-template-columns:72px 1fr;border-color:#f0f1f3;padding:9px 0}
+.sm-kv dt{color:#667085}.sm-kv dd{color:#1f2937}
+.sm-comfort{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:13px}
+.sm-comfort>div{padding:10px 9px;border:1px solid #e7e9ee;border-radius:10px;background:#fafbfc}
+.sm-comfort span{display:block;margin-bottom:4px;font-size:9px;color:#7a8494}.sm-comfort b{display:block;font-size:11px;color:#273142;line-height:1.35}
+.sm-route a{border:1px solid #dfe3e8;border-radius:10px;background:#fff;color:#273142}
+.sm-near .ic{border-radius:9px;background:#f4f6f8!important;color:#475467!important}
+.sm-stories li a{padding:12px 13px;border-radius:10px;border-color:#e6e8ec;background:#fff}
+.sm-stories b{color:#1f2937}.sm-stories span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#667085}.sm-stories em{color:#667085}
+.sm-more-link{color:#344054;text-decoration:none}.sm-src-line{padding-top:10px;border-top:1px solid #eef0f2;color:#7a8494}
+.sm-detail-bar--actions{display:grid;grid-template-columns:.8fr 1fr 1.15fr;gap:7px;padding:11px 14px;background:#fff}
+.sm-detail-bar--actions>*{min-height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-decoration:none}
+.sm-detail-bar--actions .copy{border:1px solid #dfe3e8;background:#fff;color:#344054}.sm-detail-bar--actions .map{border:1px solid #dfe3e8;background:#f7f8fa;color:#273142}.sm-detail-bar--actions .go{background:#172b4d;color:#fff}
+@media(max-width:720px){.sm-comfort{grid-template-columns:1fr 1fr}.sm-detail-bar--actions{grid-template-columns:.8fr 1fr 1fr}.sm-detail h2{font-size:21px}}

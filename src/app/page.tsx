@@ -799,6 +799,15 @@ export default function Page() {
         const blogSearch = `https://search.naver.com/search.naver?ssc=tab.blog.all&query=${encodeURIComponent(selected.title + " 후기")}`;
         const src = SRC_LABEL[String(selected.source)] || "SHOWDAY";
         const myStories = stories && stories.id === selected.id ? stories : null;
+        const kindText = [selected.category, selected.subcategory, selected.title, selected.venue].filter(Boolean).join(" ");
+        const isNature = /공원|자연|숲|둘레길|산책|하천|정원/.test(kindText);
+        const isProgram = /프로그램|체험|교육|강좌|워크숍|클래스/.test(kindText) || catKey(selected) === "체험";
+        const isFestival = catKey(selected) === "축제" || /축제|페스티벌|행사/.test(kindText);
+        const isExhibit = catKey(selected) === "전시";
+        const isPerformance = catKey(selected) === "공연";
+        const introTitle = isNature ? "이곳은 어떤 곳인가요?" : isProgram ? "어떤 프로그램인가요?" : isExhibit ? "어떤 전시인가요?" : isPerformance ? "어떤 공연인가요?" : isFestival ? "어떤 행사인가요?" : "한눈에 보기";
+        const infoTitle = isNature ? "이용 정보" : isProgram ? "참여 정보" : isExhibit ? "관람 정보" : isPerformance ? "공연 정보" : isFestival ? "행사 정보" : "방문 정보";
+        const shareUrl = typeof window !== "undefined" ? window.location.href : `https://map.showday.kr/?e=${encodeURIComponent(selected.id)}`;
         return (
           <section className="sm-detail" style={{ ["--c" as any]: m.color, ["--s" as any]: m.soft }} aria-label="행사 상세">
             <button className="sm-detail-x" aria-label="닫기" onClick={() => setSelectedId(null)}>×</button>
@@ -822,23 +831,29 @@ export default function Page() {
 
               {selected.description && (
                 <>
-                  <h3>어떤 행사인가요?</h3>
-                  <p className="sm-desc">{selected.description}{selected.description.length >= 400 ? "…" : ""}</p>
+                  <h3>{introTitle}</h3>
+                  <p className="sm-desc">{selected.description}{selected.description.length >= 520 ? "…" : ""}</p>
                 </>
               )}
 
-              <h3>방문 정보</h3>
+              <h3>{infoTitle}</h3>
               <dl className="sm-kv">
                 <div><dt>일정</dt><dd>{selected.dateText || "확인 필요"}</dd></div>
                 <div><dt>장소</dt><dd>{selected.venue || "-"}{selected.address ? <small>{selected.address}</small> : null}</dd></div>
                 <div><dt>이용료</dt><dd>{selected.isFree ? "무료" : selected.priceText || "확인 필요"}</dd></div>
                 {(selected.target || selected.ageText) && <div><dt>대상</dt><dd>{[selected.target, selected.ageText].filter(Boolean).join(" · ")}</dd></div>}
                 {selected.organizer && <div><dt>주최·운영</dt><dd>{selected.organizer}</dd></div>}
-                <div><dt>예약</dt><dd>{selected.bookingUrl ? "예약·신청 링크가 있어요" : walk ? "예약 안내가 없어요(추정) — 방문 전 확인" : "확인 필요"}</dd></div>
+                {!isNature && <div><dt>{isProgram ? "신청" : "예약"}</dt><dd>{selected.bookingUrl ? "예약·신청 링크가 있어요" : walk ? "별도 예약 안내 없음 — 방문 전 확인" : "확인 필요"}</dd></div>}
               </dl>
-              <p className="sm-hint">일정·요금·운영 여부는 바뀔 수 있어요. 가기 전에 공식 안내를 확인해 주세요.</p>
 
-              <h3>가는 길</h3>
+              <div className="sm-comfort">
+                <div><span>이용 성격</span><b>{indoor ? "실내 중심" : isNature ? "야외 활동" : "현장 확인"}</b></div>
+                <div><span>비용</span><b>{selected.isFree ? "무료" : selected.priceText || "확인 필요"}</b></div>
+                <div><span>{isNature ? "운영" : "예약"}</span><b>{isNature ? "방문 전 확인" : selected.bookingUrl ? "확인 필요" : walk ? "별도 안내 없음" : "확인 필요"}</b></div>
+              </div>
+              <p className="sm-hint">운영시간·요금·접근성 정보는 변경될 수 있어요. 방문 전 공식 안내를 함께 확인해 주세요.</p>
+
+              <h3>{isNature ? "편하게 다녀오기" : "가는 길과 주변"}</h3>
               <div className="sm-route">
                 <a href={kakaoTo} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a>
                 <a href={naver} target="_blank" rel="noopener noreferrer">네이버 지도</a>
@@ -886,13 +901,15 @@ export default function Page() {
 
               <p className="sm-src-line">정보 출처: {src}{selected.imageUrl ? " · 사진: 출처 공식 자료" : ""}</p>
             </div>
-            <div className="sm-detail-bar sm-detail-bar--simple">
+            <div className="sm-detail-bar sm-detail-bar--actions">
+              <button className="copy" onClick={async () => flash((await copyText(shareUrl)) ? "링크를 복사했어요" : "복사에 실패했어요")}>링크 복사</button>
+              <a className="map" href={naver} target="_blank" rel="noopener noreferrer">지도에서 보기</a>
               {selected.bookingUrl ? (
-                <a className="go" href={selected.bookingUrl} target="_blank" rel="noopener noreferrer">예매·신청하기 ↗</a>
+                <a className="go" href={selected.bookingUrl} target="_blank" rel="noopener noreferrer">예매·신청 ↗</a>
               ) : selected.officialUrl ? (
-                <a className="go" href={selected.officialUrl} target="_blank" rel="noopener noreferrer">공식 안내 보기 ↗</a>
+                <a className="go" href={selected.officialUrl} target="_blank" rel="noopener noreferrer">공식 안내 ↗</a>
               ) : (
-                <a className="go" href={`https://search.naver.com/search.naver?query=${encodeURIComponent(selected.title)}`} target="_blank" rel="noopener noreferrer">행사 안내 보기 ↗</a>
+                <a className="go" href={`https://search.naver.com/search.naver?query=${encodeURIComponent(selected.title)}`} target="_blank" rel="noopener noreferrer">안내 보기 ↗</a>
               )}
             </div>
           </section>
