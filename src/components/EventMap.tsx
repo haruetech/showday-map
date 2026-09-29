@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadKakaoMaps } from "@/lib/kakaoMapLoader";
 import { CAT_META, type CatKey } from "@/lib/eventMeta";
+import { ICONS, iconSvg } from "@/lib/icons";
 
 export type MapPoint = { id: string; lat: number; lng: number; title: string; imageUrl?: string; category: CatKey; isFree?: boolean; dateText?: string };
 export type Bounds = { swLat: number; swLng: number; neLat: number; neLng: number };
@@ -31,7 +32,7 @@ const iconCache: Record<string, any> = {};
 function typeMarkerImage(cat: CatKey) {
   if (iconCache[cat]) return iconCache[cat];
   const m = CAT_META[cat];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path d="M20 47C20 47 3 30 3 19a17 17 0 0 1 34 0c0 11-17 28-17 28z" fill="${m.color}" stroke="#fff" stroke-width="3"/><circle cx="20" cy="19" r="11" fill="#fff"/><text x="20" y="25" font-size="15" text-anchor="middle">${m.icon}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path d="M20 47C20 47 3 30 3 19a17 17 0 0 1 34 0c0 11-17 28-17 28z" fill="${m.color}" stroke="#fff" stroke-width="3"/><circle cx="20" cy="19" r="11" fill="#fff"/><g transform="translate(11.5 10.5) scale(0.7)" fill="none" stroke="${m.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[m.ico]}</g></svg>`;
   const img = new window.kakao.maps.MarkerImage(
     "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
     new window.kakao.maps.Size(34, 41),
@@ -177,7 +178,8 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       thumb.className = "sm-pin-thumb";
       const fallback = () => {
         thumb.className = "sm-pin-thumb noimg";
-        thumb.textContent = meta.icon;
+        thumb.innerHTML = iconSvg(meta.ico, 26, meta.color, 1.8);
+        thumb.style.background = meta.soft;
       };
       if (p.imageUrl) {
         const img = document.createElement("img");
@@ -191,7 +193,8 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       el.appendChild(thumb);
       const badge = document.createElement("span");
       badge.className = "sm-pin-badge";
-      badge.textContent = `${meta.icon} ${meta.label.split("·")[0]}`;
+      badge.innerHTML = iconSvg(meta.ico, 11, "#fff", 2.4);
+      badge.appendChild(document.createTextNode(" " + meta.label.split("·")[0]));
       el.appendChild(badge);
       if (p.isFree) {
         const f = document.createElement("span");

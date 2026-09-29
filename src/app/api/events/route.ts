@@ -15,7 +15,12 @@ export async function GET() {
     const data = await res.json();
     const events: ShowdayEvent[] = (Array.isArray(data?.events) ? data.events : [])
       .filter((e: ShowdayEvent) => e.lat != null && e.lng != null)
-      .map((e: ShowdayEvent) => ({ ...e, raw: undefined, description: undefined }));
+      .map((e: ShowdayEvent) => ({
+        ...e,
+        raw: undefined,
+        // 상세 패널의 "어떤 행사인가요?"용으로 짧게만 남긴다(HTML 제거, 400자)
+        description: e.description ? String(e.description).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400) || undefined : undefined,
+      }));
     return NextResponse.json(
       { total: events.length, events },
       { headers: { "Cache-Control": "s-maxage=600, stale-while-revalidate=1200" } }

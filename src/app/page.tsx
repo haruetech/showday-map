@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import EventMap, { type Bounds, type EventMapHandle } from "@/components/EventMap";
 import type { ShowdayEvent } from "@/lib/eventTypes";
+import { ICONS } from "@/lib/icons";
 import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
@@ -13,8 +14,8 @@ const DISTRICTS: Record<string, [number, number]> = {
 };
 
 const RADII: [number, string][] = [[3, "3km"], [5, "5km"], [10, "10km"], [99, "서울 전체"]];
-const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "💸 0원"], ["indoor", "🏠 실내"], ["walkin", "🚪 예약 없이"]];
-const AUDIENCES: [string, string][] = [["전체", "전체"], ["아이·가족", "👨‍👩‍👧 아이·가족"], ["어른", "🧑 어른·친구·연인"], ["시니어", "👵 부모님·시니어"]];
+const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "0원"], ["indoor", "실내"], ["walkin", "예약 없이"]];
+const AUDIENCES: [string, string][] = [["전체", "전체"], ["아이·가족", "아이·가족"], ["어른", "어른·친구·연인"], ["시니어", "부모님·시니어"]];
 // 시간 → 코스에 담을 곳 수
 // 우측 유형 팝업의 세부 테마(제목·소분류·장소 키워드로 판별 — 출처 데이터에 따라 정확도가 달라질 수 있음)
 const THEMES: Record<CatKey, [string, RegExp][]> = {
@@ -81,6 +82,20 @@ function downloadIcs(e: ShowdayEvent) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+
+function Ico({ n, size = 16 }: { n: string; size?: number }) {
+  return (
+    <svg className="ico" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: ICONS[n] || "" }} />
+  );
+}
+function weatherIco(label?: string) {
+  if (!label) return "sun";
+  if (/눈/.test(label)) return "snow";
+  if (/비|소나기|뇌우|이슬비|천둥/.test(label)) return "rain";
+  if (/흐림|구름|안개/.test(label)) return "cloud";
+  return "sun";
+}
+const WHEN_ICO: Record<string, string> = { free: "won", indoor: "home", walkin: "check" };
 
 type Origin = { lat: number; lng: number; label: string };
 
@@ -152,7 +167,7 @@ function buildCourse(rows: Row[], n: number, bad: boolean): { e: ShowdayEvent; f
 function Thumb({ e, cls }: { e: ShowdayEvent; cls: string }) {
   const [bad, setBad] = useState(false);
   const m = CAT_META[catKey(e)];
-  if (!e.imageUrl || bad) return <span className={`${cls} ph`} style={{ background: m.soft, color: m.color }}>{m.icon}</span>;
+  if (!e.imageUrl || bad) return <span className={`${cls} ph`} style={{ background: m.soft, color: m.color }}><Ico n={m.ico} size={26} /></span>;
   return <img className={cls} src={e.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBad(true)} />;
 }
 
@@ -279,15 +294,43 @@ export default function Page() {
       .catch(() => { if (!ignore) setStories({ id: ev.id, configured: false, items: [] }); });
     return () => { ignore = true; };
   }, [selectedId, events]);
-  function flash(m: string) { setToast(m); setTimeout(() => setToast(""), 2200); }
+  function flash(m: string) { setToast(m); setTimeout(() => setToast(""), 2600); }
+  async function copyText(t: string) {
+    try {
+      await navigator.clipboard.writeText(t);
+      return true;
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
+  // 공유: 휴대폰은 공유창, 컴퓨터는 링크 복사(복사했다는 안내가 뜬다)
   async function share(id?: string) {
     const u = new URL(window.location.href);
     if (id) u.searchParams.set("e", id);
-    const text = u.toString();
-    try {
-      if (navigator.share) await navigator.share({ title: "SHOWDAY MAP", url: text });
-      else { await navigator.clipboard.writeText(text); flash("링크를 복사했어요"); }
-    } catch { /* 취소 */ }
+    const url = u.toString();
+    const ev = id ? events.find((x) => x.id === id) : null;
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    if (touch && navigator.share) {
+      try {
+        await navigator.share({ title: ev ? ev.title : "SHOWDAY MAP", text: ev ? `${ev.title} — SHOWDAY MAP` : "오늘 내 근처 공연·전시·축제·체험", url });
+        return;
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+    flash((await copyText(url)) ? "링크를 복사했어요. 붙여넣기로 공유하세요" : "복사에 실패했어요. 주소창의 링크를 직접 복사해 주세요");
   }
   function resetAll() {
     setCat("전체"); setWhen([]); setAudience("전체"); setTime(""); setTheme(""); setScope("area"); setQ(""); setSelectedId(null);
@@ -447,14 +490,14 @@ export default function Page() {
         <button aria-label="확대" onClick={() => mapRef.current?.zoom(1)}>+</button>
         <button aria-label="축소" onClick={() => mapRef.current?.zoom(-1)}>−</button>
       </div>
-      <button className="sm-loc" aria-label="내 위치로" onClick={() => locate()}>◎</button>
+      <button className="sm-loc" aria-label="내 위치로" onClick={() => locate()}><Ico n="locate" size={22} /></button>
 
       <aside className="sm-panel">
         <div className="sm-head">
           <div className="sm-headrow">
             <div className="sm-brand">SHOWDAY<small>MAP</small></div>
             <div className="sm-tools">
-              <button onClick={() => share()} aria-label="이 화면 공유">🔗 공유</button>
+              <button onClick={() => share()} aria-label="이 화면 공유"><Ico n="link" size={13} /> 공유</button>
               {activeFilters && <button onClick={resetAll}>모두 해제</button>}
             </div>
           </div>
@@ -462,7 +505,7 @@ export default function Page() {
           <p className="sm-sub">오늘, 어떻게 보내고 싶으세요?</p>
           {weather?.ok && (
             <div className={`sm-weather${weather.bad ? " bad" : ""}`}>
-              <span className="w">{weather.emoji} {weather.label} {weather.temp}°</span>
+              <span className="w"><Ico n={weatherIco(weather.label)} size={16} /> {weather.label} {weather.temp}°</span>
               <span className="m">
                 {weather.bad
                   ? when.includes("indoor") ? "비·눈이 오네요. 실내에서 즐길 수 있는 곳을 먼저 보여드려요." : "비·눈 소식이 있어요. 실내가 편해요."
@@ -478,7 +521,7 @@ export default function Page() {
         <div className="sm-scroll">
         <div className="sm-block">
           <button className={`sm-cta${origin?.label === "내 위치" ? " on" : ""}`} onClick={() => locate()} disabled={locating}>
-            <span aria-hidden>📍</span>
+            <Ico n="pin" size={18} />
             {locating ? "위치 확인 중…" : origin?.label === "내 위치" ? "내 위치 기준으로 보는 중" : "내 근처 찾기"}
           </button>
           <div className="sm-seg" role="group" aria-label="거리">
@@ -497,11 +540,11 @@ export default function Page() {
           <div className="sm-label">무엇을 · 유형</div>
           <div className="sm-cats">
             <button className={cat === "전체" ? "on" : ""} style={{ ["--c" as any]: "#b85f35" }} onClick={() => { setCat("전체"); setTheme(""); setSelectedId(null); }}>
-              <span>🗺️</span><b>전체</b><em>{counts.전체 || 0}</em>
+              <span><Ico n="map" size={22} /></span><b>전체</b><em>{counts.전체 || 0}</em>
             </button>
             {CAT_ORDER.map((k) => (
               <button key={k} className={cat === k ? "on" : ""} style={{ ["--c" as any]: CAT_META[k].color, ["--s" as any]: CAT_META[k].soft }} onClick={() => { setCat(cat === k ? "전체" : k); setTheme(""); setSelectedId(null); }}>
-                <span>{CAT_META[k].icon}</span><b>{CAT_META[k].label}</b><em>{counts[k] || 0}</em>
+                <span><Ico n={CAT_META[k].ico} size={22} /></span><b>{CAT_META[k].label}</b><em>{counts[k] || 0}</em>
               </button>
             ))}
           </div>
@@ -509,7 +552,7 @@ export default function Page() {
           <div className="sm-label">언제·조건</div>
           <div className="sm-chips">
             {WHEN.map(([v, label]) => (
-              <button key={v} className={when.includes(v) ? "on" : ""} onClick={() => toggleWhen(v)}>{label}</button>
+              <button key={v} className={when.includes(v) ? "on" : ""} onClick={() => toggleWhen(v)}>{WHEN_ICO[v] && <Ico n={WHEN_ICO[v]} size={14} />}{label}</button>
             ))}
           </div>
 
@@ -539,7 +582,7 @@ export default function Page() {
         {course.length > 0 && (
           <div className="sm-course">
             <div className="sm-course-h">
-              🧭 {TIMES.find((t) => t[0] === time)?.[1]} 코스{weather?.bad ? " · 실내 위주" : ""}
+              <Ico n="compass" size={15} /> {TIMES.find((t) => t[0] === time)?.[1]} 코스{weather?.bad ? " · 실내 위주" : ""}
             </div>
             <ol>
               {course.map((c, i) => {
@@ -550,7 +593,7 @@ export default function Page() {
                       <span className="n" style={{ background: m.color }}>{i + 1}</span>
                       <span className="tx">
                         <b>{c.e.title}</b>
-                        <em>{m.icon} {m.label}{c.e.isFree ? " · 0원" : ""}{c.from != null ? ` · ${i === 0 && origin ? "" : "앞 코스에서 "}${fmtDist(c.from)}` : ""}</em>
+                        <em>{m.label}{c.e.isFree ? " · 0원" : ""}{c.from != null ? ` · ${i === 0 && origin ? "" : "앞 코스에서 "}${fmtDist(c.from)}` : ""}</em>
                       </span>
                     </button>
                   </li>
@@ -579,7 +622,7 @@ export default function Page() {
                     <Thumb e={e} cls="th" />
                     <span className="t">
                       <span className="meta">
-                        <i className="type" style={{ background: m.color }}>{m.icon} {m.label.split("·")[0]}</i>
+                        <i className="type" style={{ background: m.color }}><Ico n={m.ico} size={11} /> {m.label.split("·")[0]}</i>
                         {d != null && <i className="dist">{fmtDist(d)}</i>}
                         {e.isFree && <i className="free">0원</i>}
                         {(() => { const st = statusOf(e, seoulToday()); return st && st.tone !== "end" ? <i className={`st ${st.tone}`}>{st.label}</i> : null; })()}
@@ -606,7 +649,7 @@ export default function Page() {
             aria-label={CAT_META[k].label}
             onClick={() => setPop(pop === k ? null : k)}
           >
-            <span>{CAT_META[k].icon}</span>
+            <span><Ico n={CAT_META[k].ico} size={22} /></span>
             <em>{CAT_META[k].label.split("·")[0]}</em>
           </button>
         ))}
@@ -616,11 +659,11 @@ export default function Page() {
         <div className="sm-pop" style={{ ["--c" as any]: CAT_META[pop].color }} role="dialog" aria-label={`${CAT_META[pop].label} 테마`}>
           <div className="sm-pop-h">
             <div>
-              <b>{CAT_META[pop].icon} {CAT_META[pop].label}</b>
+              <b><Ico n={CAT_META[pop].ico} size={17} /> {CAT_META[pop].label}</b>
               <small>{scope === "all" ? "서울 전체" : origin ? `${origin.label} · 반경 ${radius >= 99 ? "전체" : radius + "km"}` : "지도에 보이는 범위"}</small>
             </div>
             <div className="sm-pop-x">
-              <button aria-label="공유" onClick={() => share()}>🔗</button>
+              <button aria-label="공유" onClick={() => share()}><Ico n="link" size={15} /></button>
               <button onClick={() => setPop(null)}>끄기</button>
             </div>
           </div>
@@ -641,7 +684,7 @@ export default function Page() {
       )}
 
       <button className="sm-info-btn" onClick={() => setInfo("intro")} aria-label="소개·제보·정보 출처">
-        <span aria-hidden>ⓘ</span> 안내·제보
+        <Ico n="info" size={16} /> 안내·제보
       </button>
 
       {info && (
@@ -732,21 +775,28 @@ export default function Page() {
           <section className="sm-detail" style={{ ["--c" as any]: m.color, ["--s" as any]: m.soft }} aria-label="행사 상세">
             <button className="sm-detail-x" aria-label="닫기" onClick={() => setSelectedId(null)}>×</button>
             <div className="sm-detail-body">
-              <div className="sm-detail-kicker">{m.icon} {m.label}{selected.subcategory && selected.subcategory !== selected.category ? ` · ${selected.subcategory}` : ""}</div>
+              <div className="sm-detail-kicker"><Ico n={m.ico} size={14} /> {m.label}{selected.subcategory && selected.subcategory !== selected.category ? ` · ${selected.subcategory}` : ""}</div>
               <h2>{selected.title}</h2>
               <p className="sm-detail-place">{[selected.region, selected.district].filter(Boolean).join(" ")}{selected.venue ? ` · ${selected.venue}` : ""}{selDist != null ? ` · ${fmtDist(selDist)}` : ""}</p>
               <div className="sm-tags">
-                <span className="tg type">{m.icon} {m.label.split("·")[0]}</span>
+                <span className="tg type"><Ico n={m.ico} size={12} /> {m.label.split("·")[0]}</span>
                 {selected.isFree ? <span className="tg free">0원</span> : selected.priceText ? <span className="tg">{selected.priceText}</span> : null}
                 {st && <span className={`tg st ${st.tone}`}>{st.label}</span>}
                 {selected.bookingUrl ? <span className="tg">예약 확인</span> : walk ? <span className="tg ok">예약 없이 가능(추정)</span> : null}
-                {indoor && <span className="tg">🏠 실내</span>}
+                {indoor && <span className="tg"><Ico n="home" size={12} /> 실내</span>}
               </div>
 
               <Thumb e={selected} cls="dimg" />
 
               {weather?.bad && !indoor && (
-                <div className="sm-alert">☂️ 지금 비·눈이 와요. 야외일 수 있으니 방문 전 진행 여부를 꼭 확인하세요.</div>
+                <div className="sm-alert"><Ico n="umbrella" size={15} /> 지금 비·눈이 와요. 야외일 수 있으니 방문 전 진행 여부를 꼭 확인하세요.</div>
+              )}
+
+              {selected.description && (
+                <>
+                  <h3>어떤 행사인가요?</h3>
+                  <p className="sm-desc">{selected.description}{selected.description.length >= 400 ? "…" : ""}</p>
+                </>
               )}
 
               <h3>방문 정보</h3>
@@ -755,6 +805,7 @@ export default function Page() {
                 <div><dt>장소</dt><dd>{selected.venue || "-"}{selected.address ? <small>{selected.address}</small> : null}</dd></div>
                 <div><dt>이용료</dt><dd>{selected.isFree ? "무료" : selected.priceText || "확인 필요"}</dd></div>
                 {(selected.target || selected.ageText) && <div><dt>대상</dt><dd>{[selected.target, selected.ageText].filter(Boolean).join(" · ")}</dd></div>}
+                {selected.organizer && <div><dt>주최·운영</dt><dd>{selected.organizer}</dd></div>}
                 <div><dt>예약</dt><dd>{selected.bookingUrl ? "예약·신청 링크가 있어요" : walk ? "예약 안내가 없어요(추정) — 방문 전 확인" : "확인 필요"}</dd></div>
               </dl>
               <p className="sm-hint">일정·요금·운영 여부는 바뀔 수 있어요. 가기 전에 공식 안내를 확인해 주세요.</p>
@@ -774,7 +825,7 @@ export default function Page() {
                       return (
                         <li key={x.id}>
                           <button onClick={() => pick(x)}>
-                            <span className="ic" style={{ background: xm.soft }}>{xm.icon}</span>
+                            <span className="ic" style={{ background: xm.soft, color: xm.color }}><Ico n={xm.ico} size={18} /></span>
                             <span className="tx"><b>{x.title}</b><em>{xm.label.split("·")[0]}{x.isFree ? " · 0원" : ""} · {fmtDist(d)}</em></span>
                           </button>
                         </li>
@@ -808,12 +859,14 @@ export default function Page() {
               <p className="sm-src-line">정보 출처: {src}{selected.imageUrl ? " · 사진: 출처 공식 자료" : ""}</p>
             </div>
             <div className="sm-detail-bar">
-              <button className="ic" aria-label="공유" onClick={() => share(selected.id)}>🔗</button>
-              {selected.startDate && <button className="mid" onClick={() => downloadIcs(selected)}>📅 캘린더에 담기</button>}
-              {link ? (
-                <a className="go" href={link} target="_blank" rel="noopener noreferrer">{selected.bookingUrl ? "예약·자세히" : "자세히 보기"} ↗</a>
+              <button className="ic" aria-label="공유" onClick={() => share(selected.id)}><Ico n="link" size={19} /></button>
+              {selected.startDate && <button className="mid" onClick={() => downloadIcs(selected)}><Ico n="calendar" size={16} /> 캘린더에 담기</button>}
+              {selected.bookingUrl ? (
+                <a className="go" href={selected.bookingUrl} target="_blank" rel="noopener noreferrer">예매·신청하기 ↗</a>
+              ) : selected.officialUrl ? (
+                <a className="go" href={selected.officialUrl} target="_blank" rel="noopener noreferrer">공식 안내 보기 ↗</a>
               ) : (
-                <a className="go" href={kakaoTo} target="_blank" rel="noopener noreferrer">길찾기 ↗</a>
+                <a className="go" href={`https://search.naver.com/search.naver?query=${encodeURIComponent(selected.title)}`} target="_blank" rel="noopener noreferrer">행사 안내 검색 ↗</a>
               )}
             </div>
           </section>
