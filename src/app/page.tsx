@@ -520,8 +520,13 @@ export default function Page() {
             window.location.href = `${MAIN_SEARCH}?${params.toString()}`;
           }}
         >공연검색</button>
+        <a
+          role="tab"
+          aria-selected="false"
+          href="https://seoularena.showday.kr"
+          aria-label="서울아레나로 이동"
+        >서울아레나</a>
       </div>
-      <a className="sm-arena-link" href="https://arena.showday.kr" aria-label="SEOUL ARENA로 이동">SEOUL ARENA <span>→</span></a>
 
       <div className="sm-zoom">
         <button aria-label="확대" onClick={() => mapRef.current?.zoom(1)}>+</button>
