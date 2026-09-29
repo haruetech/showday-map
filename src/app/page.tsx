@@ -674,39 +674,56 @@ export default function Page() {
         </div>
       </aside>
 
-      <div className="sm-route-dock" aria-label="SHOWDAY 편한 이동">
-        <div className="sm-route-dock-title">SHOWDAY<br/><b>ROUTE</b></div>
-        {[
-          ["easy", "🚶", "편한 길"],
-          ["accessible", "♿", "무장애"],
-          ["walk", "🌳", "걷기 좋은 길"],
-          ["rest", "🪑", "쉬어가기"],
-        ].map(([key, icon, label]) => (
-          <button key={key} className={routeMode === key ? "on" : ""} onClick={() => setRouteMode(routeMode === key ? null : key as any)}>
-            <span>{icon}</span><em>{label}</em>
-          </button>
-        ))}
-      </div>
+      <aside className="sm-now-panel" aria-label="SHOWDAY 추천">
+        <div className="sm-now-head">
+          <small>SHOWDAY PICK</small>
+          <b>{selected ? "이곳과 함께" : "지금 뭐 하지?"}</b>
+          <span>{weather?.emoji || "✦"} {weather?.label ? `${weather.label}${weather.temp != null ? ` ${Math.round(weather.temp)}°` : ""} · ` : ""}지금 상황에 맞춰 골라보세요.</span>
+        </div>
+
+        {selected ? (
+          <div className="sm-now-selected">
+            <strong>{selected.venue || selected.title}</strong>
+            <button onClick={() => setRouteMode(routeMode === "easy" ? null : "easy")}>🚶 <span>편한 길</span></button>
+            <button onClick={() => setRouteMode(routeMode === "accessible" ? null : "accessible")}>♿ <span>이동 편의</span></button>
+            <button onClick={() => setRouteMode(routeMode === "walk" ? null : "walk")}>🌳 <span>주변 산책</span></button>
+            <button onClick={() => setRouteMode(routeMode === "rest" ? null : "rest")}>🪑 <span>쉬어가기</span></button>
+          </div>
+        ) : (
+          <>
+            <section className="sm-now-section">
+              <div className="sm-now-title"><b>지금부터</b><em>시간으로 찾기</em></div>
+              <div className="sm-now-time">
+                {[['1h','1시간'],['3h','3시간'],['half','반나절']].map(([v,l]) => <button key={v} className={time===v?'on':''} onClick={() => setTime(time===v?'':v)}>{l}</button>)}
+              </div>
+            </section>
+            <section className="sm-now-section">
+              <div className="sm-now-title"><b>편하게 가기</b><em>이동 부담 고려</em></div>
+              <div className="sm-now-grid">
+                <button onClick={() => setRouteMode("easy")}>🚶 <span>편한 길</span></button>
+                <button onClick={() => setRouteMode("accessible")}>♿ <span>이동 편의</span></button>
+              </div>
+            </section>
+            <section className="sm-now-section">
+              <div className="sm-now-title"><b>오늘의 발견</b><em>놓치지 마세요</em></div>
+              <button className="sm-now-row" onClick={() => { setWhen(when.includes('free') ? when.filter(x=>x!=='free') : [...when,'free']); setSelectedId(null); }}><span>0원으로 즐기기</span><strong>{events.filter(e=>e.isFree).length}곳</strong></button>
+              <button className="sm-now-row" onClick={() => { const today=seoulToday(); const soon=[...events].filter(e=>e.endDate && e.endDate.slice(0,10)>=today).sort((a,b)=>(a.endDate||'').localeCompare(b.endDate||''))[0]; if(soon) pick(soon); }}><span>놓치기 전에</span><strong>곧 끝나는 일정 →</strong></button>
+            </section>
+            <section className="sm-now-section surprise">
+              <button className="sm-surprise" onClick={() => { const pool=results.map(x=>x.e); if(pool.length) pick(pool[Math.floor(Math.random()*pool.length)]); }}><span>✦</span><div><b>뜻밖의 발견</b><em>지도 안에서 한 곳 골라드려요</em></div><strong>→</strong></button>
+            </section>
+          </>
+        )}
+      </aside>
 
       {routeMode && (
         <div className="sm-route-pop" role="dialog" aria-label="SHOWDAY ROUTE 안내">
           <div className="sm-route-pop-h">
-            <div>
-              <small>SHOWDAY ROUTE</small>
-              <b>{routeMode === "easy" ? "편하게 이동하고 싶어요" : routeMode === "accessible" ? "무장애 이동 정보를 확인해요" : routeMode === "walk" ? "걷기 좋은 길을 찾아요" : "중간에 쉬어갈 곳을 찾아요"}</b>
-            </div>
+            <div><small>SHOWDAY ROUTE</small><b>{routeMode === "easy" ? "편하게 이동하고 싶어요" : routeMode === "accessible" ? "이동 편의 정보를 확인해요" : routeMode === "walk" ? "걷기 좋은 길을 찾아요" : "중간에 쉬어갈 곳을 찾아요"}</b></div>
             <button onClick={() => setRouteMode(null)} aria-label="닫기">×</button>
           </div>
-          <p>{routeMode === "easy" ? "계단·급경사 부담을 줄이고 휴식하기 편한 이동을 우선합니다." : routeMode === "accessible" ? "휠체어·보행보조기 이용자는 확인된 접근성 정보만 참고할 수 있도록 구성합니다. 미확인 구간은 가능하다고 표시하지 않습니다." : routeMode === "walk" ? "공원·하천·숲길처럼 걷기 좋은 공간과 문화행사를 함께 찾는 기능입니다." : "벤치·화장실·카페 등 쉬어갈 수 있는 장소를 문화생활과 함께 찾는 기능입니다."}</p>
-          {selected ? (
-            <div className="sm-route-selected">
-              <span>선택한 장소</span><b>{selected.venue || selected.title}</b>
-              <div>
-                <a href={`https://map.kakao.com/link/to/${encodeURIComponent(selected.venue || selected.title)},${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a>
-                <a href={`https://map.naver.com/p/search/${encodeURIComponent(selected.venue || selected.title)}`} target="_blank" rel="noopener noreferrer">네이버 지도</a>
-              </div>
-            </div>
-          ) : <p className="sm-route-tip">지도에서 공연·전시·체험 장소를 하나 선택하면 이동 경로를 바로 확인할 수 있어요.</p>}
+          <p>{routeMode === "easy" ? "계단·급경사 부담을 줄이고 휴식하기 편한 이동을 우선합니다." : routeMode === "accessible" ? "휠체어·보행보조기 이용자는 확인된 접근성 정보만 참고합니다. 미확인 구간은 가능하다고 표시하지 않습니다." : routeMode === "walk" ? "공원·하천·숲길처럼 걷기 좋은 공간을 함께 확인합니다." : "벤치·화장실·카페 등 쉬어갈 수 있는 장소를 함께 확인합니다."}</p>
+          {selected ? <div className="sm-route-selected"><span>선택한 장소</span><b>{selected.venue || selected.title}</b><div><a href={`https://map.kakao.com/link/to/${encodeURIComponent(selected.venue || selected.title)},${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a><a href={`https://map.naver.com/p/search/${encodeURIComponent(selected.venue || selected.title)}`} target="_blank" rel="noopener noreferrer">네이버 지도</a></div></div> : <p className="sm-route-tip">지도에서 장소를 하나 선택하면 이동 경로를 바로 확인할 수 있어요.</p>}
           <div className="sm-route-safety">※ 경사·계단·휠체어 통행 가능 여부는 현장과 지도 제공자의 최신 정보를 반드시 함께 확인해 주세요.</div>
         </div>
       )}
