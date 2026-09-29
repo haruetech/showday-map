@@ -7,6 +7,7 @@ import { ICONS } from "@/lib/icons";
 import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
+const SEOUL_ARENA = "https://arena.showday.kr";
 const SEOUL = { lat: 37.5665, lng: 126.978 };
 
 const DISTRICTS: Record<string, [number, number]> = {
@@ -464,6 +465,28 @@ export default function Page() {
   const selDist = selected && origin ? haversine(origin.lat, origin.lng, selected.lat!, selected.lng!) : null;
   const activeFilters = cat !== "전체" || !!theme || scope === "all" || when.length > 0 || audience !== "전체" || !!time || !!q.trim();
 
+  function runAiSearch() {
+    const t = q.replace(/\s+/g, " ").trim();
+    if (!t) return;
+    const next: string[] = [];
+    if (/오늘/.test(t)) next.push("today");
+    if (/주말/.test(t)) next.push("weekend");
+    if (/무료|0원|공짜/.test(t)) next.push("free");
+    if (/실내|비|눈|더워|추워|미세먼지/.test(t)) next.push("indoor");
+    if (/예약 없이|예약없이|바로 갈/.test(t)) next.push("walkin");
+    if (next.length) setWhen(Array.from(new Set(next)));
+    if (/공연|콘서트|뮤지컬|연극|클래식/.test(t)) setCat("공연");
+    else if (/전시|미술관|박물관/.test(t)) setCat("전시");
+    else if (/축제|페스티벌/.test(t)) setCat("축제");
+    else if (/체험|배우|강좌|만들기/.test(t)) setCat("체험");
+    if (/부모님|엄마|아빠|어머니|아버지|시니어/.test(t)) setAudience("시니어");
+    else if (/아이|자녀|어린이|가족/.test(t)) setAudience("아이·가족");
+    const h=t.match(/(1|3)\s*시간/);
+    if(h) setTime(h[1]==="1"?"1h":"3h");
+    setToast(`“${t}”에 맞춰 지도를 정리했어요.`);
+    window.setTimeout(()=>setToast(""),2600);
+  }
+
   function pick(e: ShowdayEvent) {
     setSelectedId(e.id);
     mapRef.current?.panTo(e.lat!, e.lng!, 4);
@@ -480,9 +503,9 @@ export default function Page() {
         onReady={() => setMapReady(true)}
       />
 
-      <div className="sm-mode" role="tablist" aria-label="보기 방식">
+      <div className="sm-mode" role="tablist" aria-label="찾기 방식">
         <button className="on" role="tab" aria-selected="true">지도</button>
-        <a role="tab" aria-selected="false" href={MAIN_SITE}>검색</a>
+        <button role="tab" aria-selected="false" onClick={() => document.getElementById("ai-map-search")?.focus()}>AI로 찾기</button>
       </div>
 
       <div className="sm-zoom">
@@ -496,6 +519,7 @@ export default function Page() {
           <div className="sm-headrow">
             <div className="sm-brand">SHOWDAY<small>MAP</small></div>
             <div className="sm-tools">
+              <a className="sm-arena-link" href={SEOUL_ARENA}>SEOUL ARENA</a>
               <button onClick={() => share()} aria-label="이 화면 공유"><Ico n="link" size={13} /> 공유</button>
               {activeFilters && <button onClick={resetAll}>모두 해제</button>}
             </div>
@@ -504,8 +528,9 @@ export default function Page() {
           <p className="sm-sub">공연·전시·축제·체험을 지도에서 바로 발견하세요.</p>
           <div className="sm-map-search">
             <Ico n="search" size={18} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="공연, 전시, 체험, 장소를 검색하세요" aria-label="지도 검색" />
+            <input id="ai-map-search" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runAiSearch()} placeholder="말하듯 찾아보세요 · 예: 오늘 부모님과 무료 공연" aria-label="AI 지도 검색" />
             {q && <button onClick={() => setQ("")} aria-label="검색어 지우기">×</button>}
+            <button className="sm-ai-go" onClick={runAiSearch} aria-label="AI로 지도 찾기">찾기</button>
           </div>
           <div className="sm-suggest">
             <button onClick={() => { setWhen(["today"]); setCat("전체"); }}>오늘 갈 곳</button>
@@ -573,7 +598,7 @@ export default function Page() {
             ))}
           </div>
 
-          <p className="sm-ai-note"><span>AI</span> 검색과 선택을 바탕으로 날씨·거리·시간에 맞는 순서로 결과를 정리합니다.</p>
+          <p className="sm-ai-note"><span>AI</span> 복잡한 필터 대신 말하듯 입력하세요. 날씨·시간·동행·무료 여부를 읽어 지도 결과를 정리합니다.</p>
         </div>
 
         {course.length > 0 && (
