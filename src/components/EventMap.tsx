@@ -8,7 +8,9 @@ export type Bounds = { swLat: number; swLng: number; neLat: number; neLng: numbe
 export type EventMapHandle = {
   panTo: (lat: number, lng: number, level?: number) => void;
   zoom: (delta: 1 | -1) => void;
-  locate: () => void;
+  /** 기준 위치(내 위치/선택 지역)와 반경을 지도에 표시하고 그 범위로 이동 */
+  showOrigin: (lat: number, lng: number, radiusKm: number | null) => void;
+  clearOrigin: () => void;
 };
 
 type Props = {
@@ -16,29 +18,37 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onBoundsChange: (b: Bounds) => void;
+  onReady?: () => void;
 };
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // 서울시청
 const POSTER_LEVEL = 5; // 이 레벨 이하로 확대하면 포스터 핀으로 표시
 
 const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
-  { points, selectedId, onSelect, onBoundsChange },
+  { points, selectedId, onSelect, onBoundsChange, onReady },
   ref
 ) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const clustererRef = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
+  const originRef = useRef<any[]>([]);
   const onSelectRef = useRef(onSelect);
   const onBoundsRef = useRef(onBoundsChange);
+  const onReadyRef = useRef(onReady);
   onSelectRef.current = onSelect;
   onBoundsRef.current = onBoundsChange;
+  onReadyRef.current = onReady;
 
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [err, setErr] = useState("");
-  const [tick, setTick] = useState(0); // idle 시마다 증가 → 포스터 핀 갱신
+  const [tick, setTick] = useState(0);
   const [zoomedIn, setZoomedIn] = useState(false);
-  const [toast, setToast] = useState("");
+
+  function clearOriginShapes() {
+    originRef.current.forEach((o) => o.setMap(null));
+    originRef.current = [];
+  }
 
   useImperativeHandle(ref, () => ({
     panTo(lat, lng, level) {
@@ -52,19 +62,41 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       if (!map) return;
       map.setLevel(map.getLevel() - delta, { animate: true });
     },
-    locate() {
-      if (!navigator.geolocation || !mapRef.current) return;
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          mapRef.current.setCenter(new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude));
-          mapRef.current.setLevel(5);
-        },
-        () => {
-          setToast("현재 위치를 확인하지 못했어요. 위치 권한을 확인해 주세요.");
-          setTimeout(() => setToast(""), 3500);
-        },
-        { timeout: 8000, maximumAge: 300000 }
-      );
+    showOrigin(lat, lng, radiusKm) {
+      const map = mapRef.current;
+      if (!map) return;
+      const kakao = window.kakao;
+      clearOriginShapes();
+      const pos = new kakao.maps.LatLng(lat, lng);
+
+      const dot = document.createElement("div");
+      dot.className = "sm-me";
+      const me = new kakao.maps.CustomOverlay({ position: pos, content: dot, yAnchor: 0.5, xAnchor: 0.5, zIndex: 30 });
+      me.setMap(map);
+      originRef.current.push(me);
+
+      if (radiusKm) {
+        const circle = new kakao.maps.Circle({
+          center: pos,
+          radius: radiusKm * 1000,
+          strokeWeight: 2,
+          strokeColor: "#b85f35",
+          strokeOpacity: 0.85,
+          strokeStyle: "dashed",
+          fillColor: "#b85f35",
+          fillOpacity: 0.07,
+        });
+        circle.setMap(map);
+        originRef.current.push(circle);
+        const wide = window.innerWidth > 768;
+        map.setBounds(circle.getBounds(), 40, 40, wide ? 40 : 320, wide ? 420 : 40);
+      } else {
+        map.setCenter(pos);
+        map.setLevel(5);
+      }
+    },
+    clearOrigin() {
+      clearOriginShapes();
     },
   }));
 
@@ -92,6 +124,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
           }, 150);
         });
         setStatus("ready");
+        onReadyRef.current?.();
       })
       .catch((e: Error) => {
         if (cancelled) return;
@@ -178,7 +211,6 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
           지도를 불러오지 못했습니다.<span>{err}</span>
         </div>
       )}
-      {toast && <div className="sm-toast">{toast}</div>}
     </>
   );
 });
