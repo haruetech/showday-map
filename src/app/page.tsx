@@ -15,7 +15,7 @@ const DISTRICTS: Record<string, [number, number]> = {
 
 const RADII: [number, string][] = [[3, "3km"], [5, "5km"], [10, "10km"], [99, "서울 전체"]];
 const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "0원"], ["indoor", "실내"], ["walkin", "예약 없이"]];
-const AUDIENCES: [string, string][] = [["전체", "상관없음"], ["혼자", "혼자"], ["친구·부부", "친구·부부"], ["부모님", "부모님과"], ["가족", "가족과"]];
+const AUDIENCES: [string, string][] = [["전체", "전체"], ["아이·가족", "아이·가족"], ["어른", "어른·친구·연인"], ["시니어", "부모님·시니어"]];
 // 시간 → 코스에 담을 곳 수
 // 우측 유형 팝업의 세부 테마(제목·소분류·장소 키워드로 판별 — 출처 데이터에 따라 정확도가 달라질 수 있음)
 const THEMES: Record<CatKey, [string, RegExp][]> = {
@@ -125,9 +125,8 @@ function audienceMatch(e: ShowdayEvent, a: string) {
   if (a === "전체") return true;
   const t = [e.target, e.ageText, e.title, e.subcategory].join(" ");
   const kid = e.familyAllowed === true || KID_RE.test(t);
-  if (a === "가족") return kid || /전체|누구나|전 연령|전연령/.test(t);
-  if (a === "부모님") return SENIOR_RE.test(t) || /전체|성인|누구나|전 연령|전연령/.test(t);
-  // 혼자·친구·부부는 연령 제한이 없는 일반 문화행사를 우선 포함합니다.
+  if (a === "아이·가족") return kid;
+  if (a === "시니어") return SENIOR_RE.test(t);
   return !kid || /전체|성인|누구나|전 연령|전연령/.test(t);
 }
 // 실내 여부: 출처 데이터에 실내/야외 구분이 없어 장소·제목 키워드로 판별한다(모르는 경우는 실내로 보지 않음).
@@ -206,7 +205,6 @@ export default function Page() {
   const [when, setWhen] = useState<string[]>([]);
   const [audience, setAudience] = useState("전체");
   const [q, setQ] = useState("");
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -409,7 +407,7 @@ export default function Page() {
         const en = e.endDate?.slice(0, 10) ?? s;
         if (!(s <= today && en >= today)) return false;
       }
-      if (kw && ![e.title, e.venue, e.address].join(" ").toLowerCase().includes(kw)) return false;
+      if (kw && ![e.title, e.venue, e.address, e.category, e.subcategory, e.target, e.ageText].join(" ").toLowerCase().includes(kw)) return false;
       return true;
     });
   }, [events, when, audience, q]);
@@ -496,22 +494,32 @@ export default function Page() {
       <aside className="sm-panel">
         <div className="sm-head">
           <div className="sm-headrow">
-            <div className="sm-brand">SHOWDAY <small>LIFE MAP</small></div>
+            <div className="sm-brand">SHOWDAY<small>MAP</small></div>
             <div className="sm-tools">
               <button onClick={() => share()} aria-label="이 화면 공유"><Ico n="link" size={13} /> 공유</button>
               {activeFilters && <button onClick={resetAll}>모두 해제</button>}
             </div>
           </div>
-          <div className="sm-eyebrow">TODAY · NEARBY · FOR ME</div>
-          <h1>오늘의 시간을<br/>가볍게 발견하세요.</h1>
-          <p className="sm-sub">공연부터 산책·전시·체험까지, 지금의 상황에 맞춰 골라드려요.</p>
+          <h1>오늘 뭐 하지?</h1>
+          <p className="sm-sub">공연·전시·축제·체험을 지도에서 바로 발견하세요.</p>
+          <div className="sm-map-search">
+            <Ico n="search" size={18} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="공연, 전시, 체험, 장소를 검색하세요" aria-label="지도 검색" />
+            {q && <button onClick={() => setQ("")} aria-label="검색어 지우기">×</button>}
+          </div>
+          <div className="sm-suggest">
+            <button onClick={() => { setWhen(["today"]); setCat("전체"); }}>오늘 갈 곳</button>
+            <button onClick={() => { setWhen(["free"]); setCat("전체"); }}>0원으로</button>
+            <button onClick={() => { setWhen(["indoor"]); setCat("전체"); }}>실내에서</button>
+            <button onClick={() => { setTime("3h"); }}>3시간 코스</button>
+          </div>
           {weather?.ok && (
             <div className={`sm-weather${weather.bad ? " bad" : ""}`}>
               <span className="w"><Ico n={weatherIco(weather.label)} size={16} /> {weather.label} {weather.temp}°</span>
               <span className="m">
                 {weather.bad
-                  ? when.includes("indoor") ? "실내 중심으로 오늘의 선택을 정리했어요." : "비·눈 소식이 있어요. 실내 문화생활을 먼저 볼까요?"
-                  : "날씨까지 반영해 오늘 갈 만한 곳을 살펴보세요."}
+                  ? when.includes("indoor") ? "비·눈이 오네요. 실내에서 즐길 수 있는 곳을 먼저 보여드려요." : "비·눈 소식이 있어요. 실내가 편해요."
+                  : "야외 나들이도 좋아요"}
               </span>
               {weather.bad && (
                 <button onClick={() => toggleWhen("indoor")}>{when.includes("indoor") ? "실내만 해제" : "실내만 보기"}</button>
@@ -539,8 +547,7 @@ export default function Page() {
         </div>
 
         <div className="sm-block">
-          <div className="sm-ai-pick"><span>SHOWDAY AI PICK</span><b>{weather?.bad ? "비 오는 오늘, 실내에서 즐기는 문화시간" : "지금 내 주변에서 시작하는 좋은 하루"}</b><small>날씨 · 거리 · 시간 · 관심사를 조합해 추천하는 영역입니다.</small></div>
-          <div className="sm-label">무엇을 하고 싶으세요?</div>
+          <div className="sm-label">무엇을 · 유형</div>
           <div className="sm-cats">
             <button className={cat === "전체" ? "on" : ""} style={{ ["--c" as any]: "#b85f35" }} onClick={() => { setCat("전체"); setTheme(""); setSelectedId(null); }}>
               <span><Ico n="map" size={22} /></span><b>전체</b><em>{counts.전체 || 0}</em>
@@ -552,34 +559,21 @@ export default function Page() {
             ))}
           </div>
 
-          <div className="sm-label">오늘의 조건</div>
+          <div className="sm-label">언제·조건</div>
           <div className="sm-chips">
             {WHEN.map(([v, label]) => (
               <button key={v} className={when.includes(v) ? "on" : ""} onClick={() => toggleWhen(v)}>{WHEN_ICO[v] && <Ico n={WHEN_ICO[v]} size={14} />}{label}</button>
             ))}
           </div>
 
-          <div className="sm-label">시간은 얼마나 있으세요? <small>동선까지 이어드려요</small></div>
+          <div className="sm-label">얼마나 시간 있어요? <small>코스로 짜드려요</small></div>
           <div className="sm-seg" role="group" aria-label="시간">
             {TIMES.map(([v, label]) => (
               <button key={v} className={time === v ? "on" : ""} onClick={() => setTime(time === v ? "" : v)}>{label}</button>
             ))}
           </div>
 
-          <button className="sm-more" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen}>
-            나에게 맞게 더 고르기 {moreOpen ? "⌃" : "⌄"}
-          </button>
-          {moreOpen && (
-            <div className="sm-more-body">
-              <div className="sm-label">누구와 함께하세요?</div>
-              <div className="sm-chips">
-                {AUDIENCES.map(([v, label]) => (
-                  <button key={v} className={audience === v ? "on" : ""} onClick={() => { setAudience(v); setSelectedId(null); }}>{label}</button>
-                ))}
-              </div>
-              <input className="sm-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="예: 오늘 3시간, 무료 전시와 산책" aria-label="검색어" />
-            </div>
-          )}
+          <p className="sm-ai-note"><span>AI</span> 검색과 선택을 바탕으로 날씨·거리·시간에 맞는 순서로 결과를 정리합니다.</p>
         </div>
 
         {course.length > 0 && (
@@ -706,15 +700,15 @@ export default function Page() {
             <div className="sm-modal-body">
               {info === "intro" && (
                 <>
-                  <h2>장소보다, 오늘의 시간을 먼저 봅니다.</h2>
-                  <p>SHOWDAY LIFE MAP은 공연·전시·축제·체험을 단순히 지도에 모으는 대신, 날씨·거리·시간·동행 상황을 함께 보고 오늘 움직이기 좋은 선택지를 찾도록 돕습니다.</p>
+                  <h2>오늘, 내 근처에서 뭘 할까요?</h2>
+                  <p>SHOWDAY MAP은 공연·전시·축제·체험을 한 지도에서 보여주고, 날씨·거리·시간을 함께 고려해 지금 갈 만한 선택지를 빠르게 찾도록 돕습니다.</p>
                   <ul>
                     <li><b>내 근처</b> — 위치를 켜면 3·5·10km 안의 행사만 거리순으로 보여 드려요.</li>
                     <li><b>비 오는 날</b> — 비·눈이 오면 실내 행사를 먼저 보여 드려요.</li>
                     <li><b>유형이 한눈에</b> — 공연·전시·축제·체험을 색과 아이콘으로 구분하고, 0원 행사는 표시해 드려요.</li>
                     <li><b>시간 맞춤 코스</b> — 1시간부터 하루까지, 시간에 맞는 코스를 짜 드려요.</li>
                   </ul>
-                  <p className="muted">목록·상세 검색이 필요하면 <a href={MAIN_SITE}>showday.kr</a>에서 찾아보세요.</p>
+                  <p className="muted">더 많은 공연 정보와 예매 소식은 <a href={MAIN_SITE}>showday.kr</a>에서 찾아보세요.</p>
                 </>
               )}
               {info === "report" && (
