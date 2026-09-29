@@ -13,7 +13,7 @@ const DISTRICTS: Record<string, [number, number]> = {
 
 const RADII: [number, string][] = [[3, "3km"], [5, "5km"], [10, "10km"], [99, "서울 전체"]];
 const CATS: [string, string][] = [["전체", "전체"], ["공연", "🎤 공연"], ["전시", "🎨 전시"], ["축제", "🎪 축제·행사"], ["체험", "🧑‍🎨 체험·배움"]];
-const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "무료"]];
+const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "무료"], ["indoor", "🏠 실내"]];
 const AUDIENCES = ["전체", "아이·가족", "어른", "시니어"];
 
 type Origin = { lat: number; lng: number; label: string };
@@ -46,6 +46,14 @@ function audienceMatch(e: ShowdayEvent, a: string) {
   if (a === "시니어") return SENIOR_RE.test(t);
   return !kid || /전체|성인|누구나|전 연령|전연령/.test(t);
 }
+// 실내 여부: 출처 데이터에 실내/야외 구분이 없어 장소·제목 키워드로 판별한다(모르는 경우는 실내로 보지 않음).
+const INDOOR_RE = /박물관|미술관|도서관|전시|공연장|극장|아트|센터|홀|체험관|문화관|회관|갤러리|콘서트|뮤지컬|연극|클래식|교육|강좌|스튜디오|기념관|과학관|문화원|예술/;
+function isIndoor(e: ShowdayEvent) {
+  const t = [e.venue, e.address, e.title, e.subcategory, e.category].join(" ");
+  if (/야외|둘레길|산책|캠핑|한강|공원 내|숲길/.test(t) && !/실내/.test(t)) return false;
+  return INDOOR_RE.test(t);
+}
+type Weather = { ok: boolean; temp?: number; label?: string; emoji?: string; bad?: boolean };
 function seoulToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
@@ -75,6 +83,8 @@ export default function Page() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(true);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const autoIndoor = useRef(false);
 
   useEffect(() => {
     fetch("/api/events")
@@ -83,6 +93,27 @@ export default function Page() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // 날씨: 기준 위치(없으면 서울) 기준. 비·눈이면 처음 한 번 자동으로 "실내"를 켠다.
+  const wLat = origin?.lat ?? SEOUL.lat;
+  const wLng = origin?.lng ?? SEOUL.lng;
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/weather?lat=${wLat.toFixed(2)}&lng=${wLng.toFixed(2)}`)
+      .then((r) => r.json())
+      .then((w: Weather) => {
+        if (ignore || !w?.ok) return;
+        setWeather(w);
+        if (w.bad && !autoIndoor.current) {
+          autoIndoor.current = true;
+          setWhen((prev) => (prev.includes("indoor") ? prev : [...prev, "indoor"]));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, [wLat, wLng]);
 
   // 기준 위치/반경이 바뀌면 지도에 표시하고 그 범위로 이동
   useEffect(() => {
@@ -148,6 +179,7 @@ export default function Page() {
       if (!audienceMatch(e, audience)) return false;
       if (when.includes("free") && !e.isFree) return false;
       if (when.includes("weekend") && !isWeekend(e.startDate)) return false;
+      if (when.includes("indoor") && !isIndoor(e)) return false;
       if (when.includes("today")) {
         const s = e.startDate?.slice(0, 10);
         if (!s) return false;
@@ -218,6 +250,19 @@ export default function Page() {
         <div className="sm-head">
           <div className="sm-brand">SHOWDAY<small>MAP</small></div>
           <h1>내 근처, 오늘 뭐 하지?</h1>
+          {weather?.ok && (
+            <div className={`sm-weather${weather.bad ? " bad" : ""}`}>
+              <span className="w">{weather.emoji} {weather.label} {weather.temp}°</span>
+              <span className="m">
+                {weather.bad
+                  ? when.includes("indoor") ? "비·눈이 와서 실내 행사 위주로 보여드려요" : "비·눈 소식이 있어요"
+                  : "야외 나들이도 좋아요"}
+              </span>
+              {weather.bad && (
+                <button onClick={() => toggleWhen("indoor")}>{when.includes("indoor") ? "실내만 해제" : "실내만 보기"}</button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="sm-block">
