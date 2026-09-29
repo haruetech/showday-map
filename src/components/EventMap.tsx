@@ -2,8 +2,9 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadKakaoMaps } from "@/lib/kakaoMapLoader";
+import { CAT_META, type CatKey } from "@/lib/eventMeta";
 
-export type MapPoint = { id: string; lat: number; lng: number; title: string; imageUrl?: string; category?: string; isFree?: boolean };
+export type MapPoint = { id: string; lat: number; lng: number; title: string; imageUrl?: string; category: CatKey; isFree?: boolean; dateText?: string };
 export type Bounds = { swLat: number; swLng: number; neLat: number; neLng: number };
 export type EventMapHandle = {
   panTo: (lat: number, lng: number, level?: number) => void;
@@ -23,6 +24,22 @@ type Props = {
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // 서울시청
 const POSTER_LEVEL = 5; // 이 레벨 이하로 확대하면 포스터 핀으로 표시
+const LABEL_LEVEL = 4; // 이 레벨 이하에서는 핀 옆에 제목 카드까지 표시
+
+// 유형별 색 원 + 아이콘 마커(클러스터 단계에서 "체험/공연/전시/축제"를 한눈에 구분)
+const iconCache: Record<string, any> = {};
+function typeMarkerImage(cat: CatKey) {
+  if (iconCache[cat]) return iconCache[cat];
+  const m = CAT_META[cat];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48"><path d="M20 47C20 47 3 30 3 19a17 17 0 0 1 34 0c0 11-17 28-17 28z" fill="${m.color}" stroke="#fff" stroke-width="3"/><circle cx="20" cy="19" r="11" fill="#fff"/><text x="20" y="25" font-size="15" text-anchor="middle">${m.icon}</text></svg>`;
+  const img = new window.kakao.maps.MarkerImage(
+    "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+    new window.kakao.maps.Size(34, 41),
+    { offset: new window.kakao.maps.Point(17, 41) }
+  );
+  iconCache[cat] = img;
+  return img;
+}
 
 const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
   { points, selectedId, onSelect, onBoundsChange, onReady },
@@ -44,6 +61,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
   const [err, setErr] = useState("");
   const [tick, setTick] = useState(0);
   const [zoomedIn, setZoomedIn] = useState(false);
+  const [labeled, setLabeled] = useState(false);
 
   function clearOriginShapes() {
     originRef.current.forEach((o) => o.setMap(null));
@@ -120,6 +138,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
             const ne = b.getNorthEast();
             onBoundsRef.current({ swLat: sw.getLat(), swLng: sw.getLng(), neLat: ne.getLat(), neLng: ne.getLng() });
             setZoomedIn(map.getLevel() <= POSTER_LEVEL);
+            setLabeled(map.getLevel() <= LABEL_LEVEL);
             setTick((t) => t + 1);
           }, 150);
         });
@@ -148,28 +167,48 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
     overlaysRef.current = [];
 
     const makePin = (p: MapPoint, selected: boolean) => {
+      const meta = CAT_META[p.category];
       const el = document.createElement("button");
       el.type = "button";
-      el.className = `sm-pin${selected ? " sel" : ""}`;
-      el.setAttribute("aria-label", p.title);
-      const category = p.category || "기타";
-      const icon = /체험|교육|배움/.test(category) ? "🧑‍🎨" : /전시/.test(category) ? "🎨" : /축제|행사/.test(category) ? "🎪" : /공연|콘서트|뮤지컬|연극|클래식|무용|국악/.test(category) ? "🎭" : "📍";
-      const badge = document.createElement("span");
-      badge.className = "sm-pin-badge";
-      badge.textContent = `${icon} ${category.replace("·지역행사", "").replace("·교육", "")}`;
-      el.appendChild(badge);
-      if (p.isFree) { const free = document.createElement("span"); free.className = "sm-pin-free"; free.textContent = "0원"; el.appendChild(free); }
+      el.className = `sm-pin${selected ? " sel" : ""}${labeled ? " wide" : ""}`;
+      el.style.setProperty("--c", meta.color);
+      el.setAttribute("aria-label", `${meta.label} ${p.title}`);
+      const thumb = document.createElement("span");
+      thumb.className = "sm-pin-thumb";
+      const fallback = () => {
+        thumb.className = "sm-pin-thumb noimg";
+        thumb.textContent = meta.icon;
+      };
       if (p.imageUrl) {
         const img = document.createElement("img");
-        img.src = p.imageUrl;
+        img.referrerPolicy = "no-referrer";
         img.alt = "";
         img.loading = "lazy";
-        img.referrerPolicy = "no-referrer";
-        img.onerror = () => { img.remove(); el.classList.add("noimg"); const f = document.createElement("span"); f.className = "sm-pin-icon"; f.textContent = icon; el.appendChild(f); };
-        el.appendChild(img);
-      } else {
-        el.classList.add("noimg");
-        const f = document.createElement("span"); f.className = "sm-pin-icon"; f.textContent = icon; el.appendChild(f);
+        img.onerror = fallback;
+        img.src = p.imageUrl;
+        thumb.appendChild(img);
+      } else fallback();
+      el.appendChild(thumb);
+      const badge = document.createElement("span");
+      badge.className = "sm-pin-badge";
+      badge.textContent = `${meta.icon} ${meta.label.split("·")[0]}`;
+      el.appendChild(badge);
+      if (p.isFree) {
+        const f = document.createElement("span");
+        f.className = "sm-pin-free";
+        f.textContent = "0원";
+        el.appendChild(f);
+      }
+      if (labeled) {
+        const l = document.createElement("span");
+        l.className = "sm-pin-label";
+        const b = document.createElement("b");
+        b.textContent = p.title;
+        const d = document.createElement("i");
+        d.textContent = p.dateText || "";
+        l.appendChild(b);
+        l.appendChild(d);
+        el.appendChild(l);
       }
       el.addEventListener("click", () => onSelectRef.current(p.id));
       return new kakao.maps.CustomOverlay({
@@ -186,7 +225,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       const ne = b.getNorthEast();
       const inView = points
         .filter((p) => p.lat >= sw.getLat() && p.lat <= ne.getLat() && p.lng >= sw.getLng() && p.lng <= ne.getLng())
-        .slice(0, 40);
+        .slice(0, labeled ? 25 : 40);
       const list = inView.some((p) => p.id === selectedId)
         ? inView
         : [...inView, ...points.filter((p) => p.id === selectedId)];
@@ -197,7 +236,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
       });
     } else {
       const markers = points.map((p) => {
-        const m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(p.lat, p.lng) });
+        const m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(p.lat, p.lng), image: typeMarkerImage(p.category), title: p.title });
         kakao.maps.event.addListener(m, "click", () => onSelectRef.current(p.id));
         return m;
       });
@@ -209,7 +248,7 @@ const EventMap = forwardRef<EventMapHandle, Props>(function EventMap(
         overlaysRef.current.push(o);
       }
     }
-  }, [points, selectedId, status, zoomedIn, tick]);
+  }, [points, selectedId, status, zoomedIn, labeled, tick]);
 
   return (
     <>
