@@ -38,6 +38,50 @@ const SOURCES: [string, string, string][] = [
   ["Open-Meteo", "https://open-meteo.com", "날씨(비·눈 여부)"],
 ];
 
+const SRC_LABEL: Record<string, string> = {
+  KOPIS: "공연예술통합전산망(KOPIS)",
+  SEOUL_RESERVATION: "서울시 공공서비스예약",
+  CULTURE_PORTAL: "문화포털(한국문화정보원)",
+  TOUR_API: "한국관광공사 TourAPI",
+  YOUTH_PROGRAM: "청소년 활동 프로그램(공공데이터)",
+  FOREST_EDU: "산림교육 프로그램(공공데이터)",
+};
+type Story = { title: string; desc: string; link: string; blogger: string; date: string };
+
+/** 진행 상태 뱃지: 오늘 기준 종료/진행 중/오늘 마감/곧 시작 */
+function statusOf(e: ShowdayEvent, today: string): { label: string; tone: "live" | "soon" | "end" } | null {
+  const s = e.startDate?.slice(0, 10);
+  if (!s) return null;
+  const en = e.endDate?.slice(0, 10) ?? s;
+  if (en < today) return { label: "종료", tone: "end" };
+  if (s > today) {
+    const d = Math.round((new Date(s).getTime() - new Date(today).getTime()) / 86400000);
+    return { label: d <= 7 ? `D-${d} 시작` : "예정", tone: "soon" };
+  }
+  return { label: en === today ? "오늘 마감" : "진행 중", tone: "live" };
+}
+function downloadIcs(e: ShowdayEvent) {
+  const s = e.startDate?.slice(0, 10);
+  if (!s) return;
+  const en = e.endDate?.slice(0, 10) ?? s;
+  const d = (iso: string) => iso.replace(/-/g, "");
+  const endEx = new Date(new Date(en).getTime() + 86400000).toISOString().slice(0, 10);
+  const esc = (t: string) => t.replace(/[\\,;]/g, (m) => "\\" + m).replace(/\n/g, " ");
+  const ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SHOWDAY MAP//KO", "BEGIN:VEVENT",
+    `UID:${e.id}@map.showday.kr`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${d(s)}`, `DTEND;VALUE=DATE:${d(endEx)}`,
+    `SUMMARY:${esc(e.title)}`, `LOCATION:${esc(e.venue || e.address || "")}`,
+    `DESCRIPTION:${esc((e.dateText || "") + " " + (e.officialUrl || e.bookingUrl || ""))}`,
+    "END:VEVENT", "END:VCALENDAR",
+  ].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  a.download = "showday-event.ics";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
 type Origin = { lat: number; lng: number; label: string };
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -138,6 +182,7 @@ export default function Page() {
   const [pop, setPop] = useState<CatKey | null>(null);
   const [theme, setTheme] = useState("");
   const [scope, setScope] = useState<"area" | "all">("area");
+  const [stories, setStories] = useState<{ id: string; configured: boolean; items: Story[] } | null>(null);
   const [info, setInfo] = useState<null | "intro" | "report" | "source">(null);
   const [toast, setToast] = useState("");
   const initId = useRef<string | null>(null);
@@ -222,6 +267,18 @@ export default function Page() {
       ignore = true;
     };
   }, [wLat, wLng]);
+  // 다녀온 이야기(블로그 후기): 선택한 행사가 바뀔 때만 불러온다
+  useEffect(() => {
+    const ev = events.find((x) => x.id === selectedId);
+    if (!ev) { setStories(null); return; }
+    let ignore = false;
+    setStories(null);
+    fetch(`/api/stories?q=${encodeURIComponent(ev.title)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!ignore) setStories({ id: ev.id, configured: !!d?.configured, items: Array.isArray(d?.items) ? d.items : [] }); })
+      .catch(() => { if (!ignore) setStories({ id: ev.id, configured: false, items: [] }); });
+    return () => { ignore = true; };
+  }, [selectedId, events]);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(""), 2200); }
   async function share(id?: string) {
     const u = new URL(window.location.href);
@@ -525,6 +582,7 @@ export default function Page() {
                         <i className="type" style={{ background: m.color }}>{m.icon} {m.label.split("·")[0]}</i>
                         {d != null && <i className="dist">{fmtDist(d)}</i>}
                         {e.isFree && <i className="free">0원</i>}
+                        {(() => { const st = statusOf(e, seoulToday()); return st && st.tone !== "end" ? <i className={`st ${st.tone}`}>{st.label}</i> : null; })()}
                       </span>
                       <b>{e.title}</b>
                       <span>{e.venue || e.address || ""}</span>
@@ -654,24 +712,111 @@ export default function Page() {
 
       {selected && (() => {
         const m = CAT_META[catKey(selected)];
+        const today = seoulToday();
+        const st = statusOf(selected, today);
+        const walk = isWalkIn(selected);
+        const indoor = isIndoor(selected);
+        const nearby = events
+          .filter((x) => x.id !== selected.id && statusOf(x, today)?.tone !== "end")
+          .map((x) => ({ x, d: haversine(selected.lat!, selected.lng!, x.lat!, x.lng!) }))
+          .filter((y) => y.d <= 2)
+          .sort((p, q) => p.d - q.d)
+          .slice(0, 4);
+        const q = encodeURIComponent(selected.venue || selected.title);
+        const naver = `https://map.naver.com/p/search/${encodeURIComponent(selected.venue || selected.title)}`;
+        const kakaoTo = `https://map.kakao.com/link/to/${q},${selected.lat},${selected.lng}`;
+        const blogSearch = `https://search.naver.com/search.naver?ssc=tab.blog.all&query=${encodeURIComponent(selected.title + " 후기")}`;
+        const src = SRC_LABEL[String(selected.source)] || "SHOWDAY";
+        const myStories = stories && stories.id === selected.id ? stories : null;
         return (
-          <div className="sm-card" style={{ ["--c" as any]: m.color }}>
-            <button className="x" aria-label="닫기" onClick={() => setSelectedId(null)}>×</button>
-            <Thumb e={selected} cls="cimg" />
-            <div>
-              <span className="tag" style={{ background: m.color }}>{m.icon} {m.label}</span>
-              {selected.isFree && <span className="tag free">0원</span>}
-              <h3>{selected.title}</h3>
-              <p>{selected.dateText || "일정 확인 필요"}</p>
-              <p>{selected.venue || selected.address || ""}{selDist != null ? ` · ${fmtDist(selDist)}` : ""}</p>
-              {!selected.isFree && selected.priceText && <p>{selected.priceText}</p>}
-              <div className="acts">
-                {link && <a href={link} target="_blank" rel="noopener noreferrer">자세히 · 예매</a>}
-                <a className="sub" href={`https://map.kakao.com/link/to/${encodeURIComponent(selected.venue || selected.title)},${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer">길찾기</a>
-                <button className="sub" onClick={() => share(selected.id)}>공유</button>
+          <section className="sm-detail" style={{ ["--c" as any]: m.color, ["--s" as any]: m.soft }} aria-label="행사 상세">
+            <button className="sm-detail-x" aria-label="닫기" onClick={() => setSelectedId(null)}>×</button>
+            <div className="sm-detail-body">
+              <div className="sm-detail-kicker">{m.icon} {m.label}{selected.subcategory && selected.subcategory !== selected.category ? ` · ${selected.subcategory}` : ""}</div>
+              <h2>{selected.title}</h2>
+              <p className="sm-detail-place">{[selected.region, selected.district].filter(Boolean).join(" ")}{selected.venue ? ` · ${selected.venue}` : ""}{selDist != null ? ` · ${fmtDist(selDist)}` : ""}</p>
+              <div className="sm-tags">
+                <span className="tg type">{m.icon} {m.label.split("·")[0]}</span>
+                {selected.isFree ? <span className="tg free">0원</span> : selected.priceText ? <span className="tg">{selected.priceText}</span> : null}
+                {st && <span className={`tg st ${st.tone}`}>{st.label}</span>}
+                {selected.bookingUrl ? <span className="tg">예약 확인</span> : walk ? <span className="tg ok">예약 없이 가능(추정)</span> : null}
+                {indoor && <span className="tg">🏠 실내</span>}
               </div>
+
+              <Thumb e={selected} cls="dimg" />
+
+              {weather?.bad && !indoor && (
+                <div className="sm-alert">☂️ 지금 비·눈이 와요. 야외일 수 있으니 방문 전 진행 여부를 꼭 확인하세요.</div>
+              )}
+
+              <h3>방문 정보</h3>
+              <dl className="sm-kv">
+                <div><dt>일정</dt><dd>{selected.dateText || "확인 필요"}</dd></div>
+                <div><dt>장소</dt><dd>{selected.venue || "-"}{selected.address ? <small>{selected.address}</small> : null}</dd></div>
+                <div><dt>이용료</dt><dd>{selected.isFree ? "무료" : selected.priceText || "확인 필요"}</dd></div>
+                {(selected.target || selected.ageText) && <div><dt>대상</dt><dd>{[selected.target, selected.ageText].filter(Boolean).join(" · ")}</dd></div>}
+                <div><dt>예약</dt><dd>{selected.bookingUrl ? "예약·신청 링크가 있어요" : walk ? "예약 안내가 없어요(추정) — 방문 전 확인" : "확인 필요"}</dd></div>
+              </dl>
+              <p className="sm-hint">일정·요금·운영 여부는 바뀔 수 있어요. 가기 전에 공식 안내를 확인해 주세요.</p>
+
+              <h3>가는 길</h3>
+              <div className="sm-route">
+                <a href={kakaoTo} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a>
+                <a href={naver} target="_blank" rel="noopener noreferrer">네이버 지도</a>
+              </div>
+
+              {nearby.length > 0 && (
+                <>
+                  <h3>이 근처에서 함께 가기 <small>2km 이내</small></h3>
+                  <ul className="sm-near">
+                    {nearby.map(({ x, d }) => {
+                      const xm = CAT_META[catKey(x)];
+                      return (
+                        <li key={x.id}>
+                          <button onClick={() => pick(x)}>
+                            <span className="ic" style={{ background: xm.soft }}>{xm.icon}</span>
+                            <span className="tx"><b>{x.title}</b><em>{xm.label.split("·")[0]}{x.isFree ? " · 0원" : ""} · {fmtDist(d)}</em></span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+
+              <h3>다녀온 이야기 <small>이용·블로그 후기</small></h3>
+              {myStories && myStories.items.length > 0 ? (
+                <ul className="sm-stories">
+                  {myStories.items.map((it) => (
+                    <li key={it.link}>
+                      <a href={it.link} target="_blank" rel="noopener noreferrer">
+                        <b>{it.title}</b>
+                        <span>{it.desc}</span>
+                        <em>{it.blogger}{it.date ? ` · ${it.date.slice(0, 4)}.${it.date.slice(4, 6)}.${it.date.slice(6, 8)}` : ""} · 블로그에서 읽기 ↗</em>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="sm-hint">{myStories ? "찾은 후기가 없어요." : "후기를 찾는 중…"}</p>
+              )}
+              {selected.source === "SEOUL_RESERVATION" && selected.bookingUrl && (
+                <a className="sm-more-link" href={selected.bookingUrl} target="_blank" rel="noopener noreferrer">서울시 예약 사이트에서 이용후기 보기 ↗ </a>
+              )}
+              <a className="sm-more-link" href={blogSearch} target="_blank" rel="noopener noreferrer">네이버에서 후기 더 찾기 ↗</a>
+
+              <p className="sm-src-line">정보 출처: {src}{selected.imageUrl ? " · 사진: 출처 공식 자료" : ""}</p>
             </div>
-          </div>
+            <div className="sm-detail-bar">
+              <button className="ic" aria-label="공유" onClick={() => share(selected.id)}>🔗</button>
+              {selected.startDate && <button className="mid" onClick={() => downloadIcs(selected)}>📅 캘린더에 담기</button>}
+              {link ? (
+                <a className="go" href={link} target="_blank" rel="noopener noreferrer">{selected.bookingUrl ? "예약·자세히" : "자세히 보기"} ↗</a>
+              ) : (
+                <a className="go" href={kakaoTo} target="_blank" rel="noopener noreferrer">길찾기 ↗</a>
+              )}
+            </div>
+          </section>
         );
       })()}
     </div>
