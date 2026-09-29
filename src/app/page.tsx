@@ -501,7 +501,7 @@ export default function Page() {
 
       <div className="sm-mode" role="tablist" aria-label="SHOWDAY 주요 화면">
         <button className="on" role="tab" aria-selected="true">지도</button>
-        <a role="tab" aria-selected="false" href={`${MAIN_SITE}/search`}>공연검색</a>
+        <a role="tab" aria-selected="false" href={`${MAIN_SITE}/?${new URLSearchParams({...(q.trim()?{q:q.trim()}:{}),...(when.length?{w:when.join(",")} : {}),...(audience!=="전체"?{a:audience}:{}),...(cat!=="전체"?{c:cat}:{}),...(origin?.label && origin.label!=="내 위치"?{d:origin.label}: {})}).toString()}`}>공연검색</a>
       </div>
       <a className="sm-arena-link" href="https://arena.showday.kr" aria-label="SEOUL ARENA로 이동">SEOUL ARENA <span>→</span></a>
 
@@ -875,15 +875,13 @@ export default function Page() {
 
               <p className="sm-src-line">정보 출처: {src}{selected.imageUrl ? " · 사진: 출처 공식 자료" : ""}</p>
             </div>
-            <div className="sm-detail-bar">
-              <button className="ic" aria-label="공유" onClick={() => share(selected.id)}><Ico n="link" size={19} /></button>
-              {selected.startDate && <button className="mid" onClick={() => downloadIcs(selected)}><Ico n="calendar" size={16} /> 캘린더에 담기</button>}
+            <div className="sm-detail-bar sm-detail-bar--simple">
               {selected.bookingUrl ? (
                 <a className="go" href={selected.bookingUrl} target="_blank" rel="noopener noreferrer">예매·신청하기 ↗</a>
               ) : selected.officialUrl ? (
                 <a className="go" href={selected.officialUrl} target="_blank" rel="noopener noreferrer">공식 안내 보기 ↗</a>
               ) : (
-                <a className="go" href={`https://search.naver.com/search.naver?query=${encodeURIComponent(selected.title)}`} target="_blank" rel="noopener noreferrer">행사 안내 검색 ↗</a>
+                <a className="go" href={`https://search.naver.com/search.naver?query=${encodeURIComponent(selected.title)}`} target="_blank" rel="noopener noreferrer">행사 안내 보기 ↗</a>
               )}
             </div>
           </section>
