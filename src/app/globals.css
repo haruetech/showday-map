@@ -270,3 +270,27 @@ button{cursor:pointer;border:0;background:none}
 .sm-pin-badge{display:inline-flex;align-items:center;gap:2px}
 .sm-cats button,.sm-chips button,.sm-seg button{font-weight:700}
 .sm-panel h1{font-weight:800;letter-spacing:-.03em}
+
+/* LIFE MAP 2.1 — 40+를 중심에 두되 전 연령이 자연스럽게 쓰는 차분한 에디토리얼 UI */
+:root{--ink:#f4f6f8;--surface:#ffffff;--line:#e7eaee;--gold:#1f6feb;--paper:#172033;--muted:#6f7785}
+.sm-panel{width:396px;border-radius:20px;background:rgba(255,255,255,.97);box-shadow:0 18px 60px rgba(24,32,51,.16);border:1px solid rgba(255,255,255,.7)}
+.sm-head{padding:20px 20px 12px;background:linear-gradient(180deg,#fff 0%,#fbfcfe 100%)}
+.sm-brand{font-size:12px;letter-spacing:.08em;color:#172033}.sm-brand small{font-size:9px;letter-spacing:.14em;color:#1f6feb}
+.sm-eyebrow{margin-top:20px;font-size:9px;font-weight:800;letter-spacing:.16em;color:#8a93a2}
+.sm-panel h1{margin:6px 0 8px;font-size:27px;line-height:1.17;font-weight:760;letter-spacing:-.045em;color:#172033}
+.sm-sub{font-size:12px;line-height:1.55;color:#737c8b;max-width:330px}
+.sm-weather{margin-top:13px;padding:11px 12px;border-radius:12px;background:#f5f8fc;border:1px solid #e6edf7}.sm-weather.bad{background:#f3f7ff;border-color:#dce8ff}.sm-weather .m{line-height:1.45}
+.sm-block{padding:14px 20px 0}.sm-label{margin:13px 0 7px;font-size:11px;letter-spacing:-.01em;color:#596273}.sm-label small{font-weight:500;color:#98a0ac}
+.sm-cta{border-radius:12px;background:#172033!important;color:#fff!important;box-shadow:none!important}
+.sm-seg button,.sm-chips button,.sm-select,.sm-input{border-color:#e5e9ef!important;background:#fff!important;color:#4f5867!important;border-radius:10px!important}
+.sm-seg button.on,.sm-chips button.on{background:#edf4ff!important;border-color:#b9d2fb!important;color:#1557b0!important;box-shadow:none!important}
+.sm-cats{gap:7px}.sm-cats button{padding:10px 3px;border:1px solid #e5e9ef;border-radius:12px;box-shadow:none}.sm-cats button.on{box-shadow:0 0 0 1px var(--c);background:var(--s,#f6f8fb)}
+.sm-cats button b{font-size:10px}.sm-cats button em{font-size:10px}
+.sm-ai-pick{display:flex;flex-direction:column;gap:3px;margin:2px 0 14px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#172033,#26395c);color:#fff;box-shadow:0 10px 24px rgba(23,32,51,.12)}
+.sm-ai-pick span{font-size:9px;font-weight:800;letter-spacing:.14em;color:#8dbbff}.sm-ai-pick b{font-size:13px;line-height:1.35}.sm-ai-pick small{font-size:10px;line-height:1.4;color:#c7d1df}
+.sm-more{color:#4f5867!important}.sm-course{border-radius:14px!important;background:#f8fafc!important;border:1px solid #e7ecf2!important}.sm-course-h{color:#172033!important}
+.sm-list-head{color:#30394a}.sm-mode{box-shadow:0 8px 28px rgba(23,32,51,.12)!important}.sm-mode button.on{background:#172033!important;color:#fff!important}
+.sm-info-btn{color:#172033!important;box-shadow:0 8px 24px rgba(23,32,51,.12)!important}.sm-info-btn .ico{color:#1f6feb!important}
+.sm-dock button{box-shadow:0 8px 24px rgba(23,32,51,.14)!important}
+.sm-pin{filter:drop-shadow(0 7px 14px rgba(23,32,51,.18))}
+@media(max-width:768px){.sm-head{padding:16px 16px 8px}.sm-panel h1{font-size:22px}.sm-block{padding-left:16px;padding-right:16px}.sm-ai-pick{margin-top:0}.sm-panel{border-radius:18px}}
