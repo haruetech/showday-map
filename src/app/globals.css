@@ -129,6 +129,52 @@ button{cursor:pointer;border:0;background:none}
 .sm-course .tx b{font-size:12px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sm-course .tx em{font-style:normal;font-size:10px;color:var(--muted)}
 
+/* 우측 유형 바로가기 + 테마 팝업 */
+.sm-dock{position:absolute;z-index:20;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+.sm-dock button{display:flex;flex-direction:column;align-items:center;justify-content:center;width:56px;height:58px;border-radius:16px;background:#fff;border:2px solid transparent;box-shadow:0 6px 22px rgba(60,36,27,.2)}
+.sm-dock button span{font-size:22px;line-height:1}
+.sm-dock button em{font-style:normal;font-size:10px;font-weight:900;margin-top:2px;color:var(--c)}
+.sm-dock button.on,.sm-dock button.open{background:var(--s);border-color:var(--c)}
+.sm-pop{position:absolute;z-index:21;right:84px;top:50%;transform:translateY(-50%);width:280px;padding:14px;border-radius:20px;background:#fff;box-shadow:0 14px 44px rgba(60,36,27,.3)}
+.sm-pop-h{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.sm-pop-h b{display:block;font-size:16px;font-weight:900}
+.sm-pop-h small{font-size:11px;color:var(--muted)}
+.sm-pop-x{display:flex;gap:6px}
+.sm-pop-x button{min-height:32px;padding:0 10px;border-radius:10px;background:#f3ebe1;font-size:12px;font-weight:800}
+.sm-seg.two{grid-template-columns:1fr 1fr;margin:0 0 8px}
+.sm-theme{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;padding:0 8px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:13px;font-weight:800}
+.sm-theme.on{background:var(--s,#fbe6d6);border-color:var(--c);color:var(--c)}
+.sm-theme.all{margin-bottom:6px}
+.sm-theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sm-theme.only{margin-top:10px;background:var(--c);border-color:var(--c);color:#fff}
+
+/* 안내·제보 버튼과 모달 */
+.sm-info-btn{position:absolute;z-index:20;top:14px;right:14px;min-height:40px;padding:0 14px;border-radius:999px;background:#fff;box-shadow:0 6px 22px rgba(60,36,27,.2);font-size:13px;font-weight:900;color:var(--paper)}
+.sm-info-btn span{color:var(--gold);margin-right:3px}
+.sm-modal-bg{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(60,36,27,.35)}
+.sm-modal{position:relative;width:min(560px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;padding:22px 24px 18px;border-radius:24px;background:var(--surface);box-shadow:0 20px 60px rgba(60,36,27,.35)}
+.sm-modal-x{position:absolute;top:14px;right:16px;width:36px;height:36px;border-radius:50%;background:#f3ebe1;font-size:20px}
+.sm-modal-brand{display:flex;gap:12px;align-items:center}
+.sm-modal-brand .logo{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:var(--gold);color:#fff;font-size:22px;font-weight:900}
+.sm-modal-brand b{display:block;font-size:17px;font-weight:900}
+.sm-modal-brand small{font-size:12px;color:var(--muted)}
+.sm-tabs{display:flex;gap:18px;margin-top:14px;border-bottom:1px solid var(--line)}
+.sm-tabs button{padding:8px 2px;font-size:14px;font-weight:800;color:var(--muted);border-bottom:2px solid transparent}
+.sm-tabs button.on{color:var(--gold);border-color:var(--gold)}
+.sm-modal-body{flex:1;min-height:0;overflow:auto;padding:14px 0 8px;font-size:13px;line-height:1.65}
+.sm-modal-body h2{margin:0 0 8px;font-size:20px;font-weight:900;letter-spacing:-.02em}
+.sm-modal-body p{margin:0 0 10px}
+.sm-modal-body ul{margin:0 0 10px;padding-left:18px}
+.sm-modal-body li{margin-bottom:4px}
+.sm-modal-body .muted{color:var(--muted);font-size:12px}
+.sm-modal-body a{color:var(--gold);font-weight:800}
+.sm-src>div{display:grid;grid-template-columns:200px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.sm-src dt{font-weight:800}
+.sm-src dd{margin:0;color:var(--muted)}
+.sm-modal-cta{display:inline-block;margin:4px 0 8px;padding:11px 20px;border-radius:999px;background:var(--gold);color:#fff!important;font-weight:900;text-decoration:none}
+.sm-modal-cta.off{background:#e6d6c4;color:var(--muted)!important}
+.sm-modal-go{margin-top:6px;min-height:48px;border-radius:14px;background:var(--gold);color:#fff;font-size:15px;font-weight:900}
+
 /* 모바일: 하단 시트 */
 @media (max-width:768px){
   .sm-panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:64dvh}
@@ -147,7 +193,11 @@ button{cursor:pointer;border:0;background:none}
   .sm-chips button{flex:none}
   .sm-list-head{padding:12px 14px}
   .sm-mode{top:10px}
-  .sm-zoom{right:10px;top:64px;bottom:auto}
+  .sm-zoom{right:10px;top:60px;bottom:auto}
   .sm-loc{right:10px;top:160px;bottom:auto}
+  .sm-dock,.sm-pop{display:none}
+  .sm-info-btn{top:10px;right:10px;min-height:36px;padding:0 11px;font-size:12px}
+  .sm-zoom{top:60px}
+  .sm-src>div{grid-template-columns:1fr;gap:2px}
   .sm-card{left:8px;right:8px;top:58px;bottom:auto;width:auto;min-width:0}
 }

@@ -16,7 +16,27 @@ const RADII: [number, string][] = [[3, "3km"], [5, "5km"], [10, "10km"], [99, "�
 const WHEN: [string, string][] = [["today", "오늘"], ["weekend", "이번 주말"], ["free", "💸 0원"], ["indoor", "🏠 실내"], ["walkin", "🚪 예약 없이"]];
 const AUDIENCES: [string, string][] = [["전체", "전체"], ["아이·가족", "👨‍👩‍👧 아이·가족"], ["어른", "🧑 어른·친구·연인"], ["시니어", "👵 부모님·시니어"]];
 // 시간 → 코스에 담을 곳 수
+// 우측 유형 팝업의 세부 테마(제목·소분류·장소 키워드로 판별 — 출처 데이터에 따라 정확도가 달라질 수 있음)
+const THEMES: Record<CatKey, [string, RegExp][]> = {
+  체험: [["만들기·공예", /만들기|공예|도예|목공|DIY|클래스|워크숍|자수|캔들/], ["과학·자연", /과학|생태|숲|자연|곤충|천문|식물|환경/], ["요리·먹거리", /요리|쿠킹|베이킹|제과|제빵|농부|수확|음식/], ["배움·강좌", /강좌|강연|교육|배움|코딩|독서|글쓰기|인문/]],
+  전시: [["미술·아트", /미술|회화|조각|아트|작품|페인팅|드로잉/], ["사진·미디어", /사진|미디어|영상|디지털|빛|라이트/], ["역사·문화", /역사|박물|유물|문화재|전통|기념/], ["어린이·가족", /어린이|키즈|아동|가족|체험전/]],
+  공연: [["뮤지컬·연극", /뮤지컬|연극|극단/], ["클래식·국악", /클래식|오케스트라|국악|오페라|음악회|협주/], ["콘서트·밴드", /콘서트|밴드|재즈|팝|가요|트로트/], ["무용·가족극", /무용|발레|댄스|인형극|가족극|어린이/]],
+  축제: [["지역 축제", /축제|페스티벌|페스티발/], ["야외·공원", /야외|공원|광장|둘레길|한강/], ["전통·문화", /전통|국악|민속|문화제|한복/], ["먹거리·마켓", /푸드|먹거리|마켓|장터|시장/]],
+  기타: [],
+};
+
 const TIMES: [string, string, number][] = [["1h", "1시간", 1], ["3h", "3시간", 2], ["half", "반나절", 3], ["day", "하루", 4]];
+
+const REPORT_URL = process.env.NEXT_PUBLIC_REPORT_URL || "";
+const SOURCES: [string, string, string][] = [
+  ["공연예술통합전산망(KOPIS)", "https://www.kopis.or.kr", "공연 일정·장소·요금"],
+  ["문화포털(한국문화정보원)", "https://www.culture.go.kr", "전시·공연·문화행사"],
+  ["서울시 공공서비스예약", "https://yeyak.seoul.go.kr", "체험·교육·문화행사 예약 정보"],
+  ["한국관광공사 TourAPI", "https://api.visitkorea.or.kr", "축제·행사·관광지"],
+  ["청소년 활동·산림교육 프로그램", "", "공공기관이 공개한 체험·교육 프로그램 정보"],
+  ["카카오맵", "https://developers.kakao.com", "지도·위치"],
+  ["Open-Meteo", "https://open-meteo.com", "날씨(비·눈 여부)"],
+];
 
 type Origin = { lat: number; lng: number; label: string };
 
@@ -115,6 +135,10 @@ export default function Page() {
 
   const [cat, setCat] = useState("전체");
   const [time, setTime] = useState("");
+  const [pop, setPop] = useState<CatKey | null>(null);
+  const [theme, setTheme] = useState("");
+  const [scope, setScope] = useState<"area" | "all">("area");
+  const [info, setInfo] = useState<null | "intro" | "report" | "source">(null);
   const [toast, setToast] = useState("");
   const initId = useRef<string | null>(null);
   const urlReady = useRef(false);
@@ -145,6 +169,8 @@ export default function Page() {
     if (p.get("a")) setAudience(p.get("a")!);
     if (p.get("t")) setTime(p.get("t")!);
     if (p.get("q")) setQ(p.get("q")!);
+    if (p.get("th")) setTheme(p.get("th")!);
+    if (p.get("sc") === "all") setScope("all");
     if (p.get("d") && DISTRICTS[p.get("d")!]) {
       const d = p.get("d")!;
       setOrigin({ lat: DISTRICTS[d][0], lng: DISTRICTS[d][1], label: d });
@@ -161,12 +187,14 @@ export default function Page() {
     if (when.length) p.set("w", when.join(","));
     if (audience !== "전체") p.set("a", audience);
     if (time) p.set("t", time);
+    if (theme) p.set("th", theme);
+    if (scope === "all") p.set("sc", "all");
     if (q.trim()) p.set("q", q.trim());
     if (origin && origin.label !== "내 위치") { p.set("d", origin.label); p.set("r", String(radius)); }
     if (selectedId) p.set("e", selectedId);
     const qs = p.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-  }, [cat, when, audience, time, q, origin, radius, selectedId]);
+  }, [cat, when, audience, time, theme, scope, q, origin, radius, selectedId]);
   useEffect(() => {
     if (!initId.current || !mapReady || !events.length) return;
     const e = events.find((x) => x.id === initId.current);
@@ -205,7 +233,7 @@ export default function Page() {
     } catch { /* 취소 */ }
   }
   function resetAll() {
-    setCat("전체"); setWhen([]); setAudience("전체"); setTime(""); setQ(""); setSelectedId(null);
+    setCat("전체"); setWhen([]); setAudience("전체"); setTime(""); setTheme(""); setScope("area"); setQ(""); setSelectedId(null);
     autoIndoor.current = true;
   }
 
@@ -284,36 +312,39 @@ export default function Page() {
       return true;
     });
   }, [events, when, audience, q]);
-  const filtered = useMemo(() => baseFiltered.filter((e) => catMatch(e, cat)), [baseFiltered, cat]);
+  const filtered = useMemo(() => {
+    const re = cat !== "전체" && theme ? THEMES[cat as CatKey]?.find((t) => t[0] === theme)?.[1] : null;
+    return baseFiltered.filter((e) => catMatch(e, cat) && (!re || re.test([e.title, e.subcategory, e.venue, e.category].join(" "))));
+  }, [baseFiltered, cat, theme]);
 
   // 유형별 개수(반경 안, 유형 선택은 제외)
   const counts = useMemo(() => {
     const c: Record<string, number> = { 전체: 0 };
     baseFiltered.forEach((e) => {
-      if (origin && radius < 99 && haversine(origin.lat, origin.lng, e.lat!, e.lng!) > radius) return;
+      if (origin && radius < 99 && scope === "area" && haversine(origin.lat, origin.lng, e.lat!, e.lng!) > radius) return;
       c.전체++;
       const k = catKey(e);
       c[k] = (c[k] || 0) + 1;
     });
     return c;
-  }, [baseFiltered, origin, radius]);
+  }, [baseFiltered, origin, radius, scope]);
 
   // 기준 위치가 있으면 거리 계산 + 반경 필터 + 가까운 순
   const results = useMemo(() => {
     if (origin) {
       const list = filtered
         .map((e) => ({ e, d: haversine(origin.lat, origin.lng, e.lat!, e.lng!) }))
-        .filter((x) => radius >= 99 || x.d <= radius)
+        .filter((x) => radius >= 99 || scope === "all" || x.d <= radius)
         .sort((a, b) => a.d - b.d);
       return list;
     }
-    const inView = bounds
+    const inView = bounds && scope === "area"
       ? filtered.filter((e) => e.lat! >= bounds.swLat && e.lat! <= bounds.neLat && e.lng! >= bounds.swLng && e.lng! <= bounds.neLng)
       : filtered;
     return [...inView]
       .sort((a, b) => (a.startDate || "9999").localeCompare(b.startDate || "9999"))
       .map((e) => ({ e, d: null as number | null }));
-  }, [filtered, origin, radius, bounds]);
+  }, [filtered, origin, radius, bounds, scope]);
 
   const points = useMemo(
     () => (origin ? results : filtered.map((e) => ({ e }))).map((x) => ({ id: x.e.id, lat: x.e.lat!, lng: x.e.lng!, title: x.e.title, imageUrl: x.e.imageUrl, category: catKey(x.e), isFree: x.e.isFree, dateText: x.e.dateText })),
@@ -323,7 +354,7 @@ export default function Page() {
   const selected = events.find((e) => e.id === selectedId) || null;
   const link = selected?.officialUrl || selected?.bookingUrl;
   const heading = origin
-    ? `${origin.label} 기준 ${radius >= 99 ? "가까운 순" : `${radius}km 이내`}`
+    ? `${origin.label} 기준 ${radius >= 99 || scope === "all" ? "가까운 순" : `${radius}km 이내`}`
     : "지도에 보이는 공연·행사";
 
   const timeN = TIMES.find((t) => t[0] === time)?.[2] ?? 0;
@@ -332,7 +363,7 @@ export default function Page() {
     [results, timeN, weather?.bad]
   );
   const selDist = selected && origin ? haversine(origin.lat, origin.lng, selected.lat!, selected.lng!) : null;
-  const activeFilters = cat !== "전체" || when.length > 0 || audience !== "전체" || !!time || !!q.trim();
+  const activeFilters = cat !== "전체" || !!theme || scope === "all" || when.length > 0 || audience !== "전체" || !!time || !!q.trim();
 
   function pick(e: ShowdayEvent) {
     setSelectedId(e.id);
@@ -408,11 +439,11 @@ export default function Page() {
         <div className="sm-block">
           <div className="sm-label">무엇을 · 유형</div>
           <div className="sm-cats">
-            <button className={cat === "전체" ? "on" : ""} style={{ ["--c" as any]: "#b85f35" }} onClick={() => { setCat("전체"); setSelectedId(null); }}>
+            <button className={cat === "전체" ? "on" : ""} style={{ ["--c" as any]: "#b85f35" }} onClick={() => { setCat("전체"); setTheme(""); setSelectedId(null); }}>
               <span>🗺️</span><b>전체</b><em>{counts.전체 || 0}</em>
             </button>
             {CAT_ORDER.map((k) => (
-              <button key={k} className={cat === k ? "on" : ""} style={{ ["--c" as any]: CAT_META[k].color, ["--s" as any]: CAT_META[k].soft }} onClick={() => { setCat(cat === k ? "전체" : k); setSelectedId(null); }}>
+              <button key={k} className={cat === k ? "on" : ""} style={{ ["--c" as any]: CAT_META[k].color, ["--s" as any]: CAT_META[k].soft }} onClick={() => { setCat(cat === k ? "전체" : k); setTheme(""); setSelectedId(null); }}>
                 <span>{CAT_META[k].icon}</span><b>{CAT_META[k].label}</b><em>{counts[k] || 0}</em>
               </button>
             ))}
@@ -507,6 +538,117 @@ export default function Page() {
         )}
         </div>
       </aside>
+
+      <div className="sm-dock" aria-label="유형 바로가기">
+        {CAT_ORDER.map((k) => (
+          <button
+            key={k}
+            className={`${cat === k ? "on" : ""}${pop === k ? " open" : ""}`}
+            style={{ ["--c" as any]: CAT_META[k].color, ["--s" as any]: CAT_META[k].soft }}
+            aria-label={CAT_META[k].label}
+            onClick={() => setPop(pop === k ? null : k)}
+          >
+            <span>{CAT_META[k].icon}</span>
+            <em>{CAT_META[k].label.split("·")[0]}</em>
+          </button>
+        ))}
+      </div>
+
+      {pop && (
+        <div className="sm-pop" style={{ ["--c" as any]: CAT_META[pop].color }} role="dialog" aria-label={`${CAT_META[pop].label} 테마`}>
+          <div className="sm-pop-h">
+            <div>
+              <b>{CAT_META[pop].icon} {CAT_META[pop].label}</b>
+              <small>{scope === "all" ? "서울 전체" : origin ? `${origin.label} · 반경 ${radius >= 99 ? "전체" : radius + "km"}` : "지도에 보이는 범위"}</small>
+            </div>
+            <div className="sm-pop-x">
+              <button aria-label="공유" onClick={() => share()}>🔗</button>
+              <button onClick={() => setPop(null)}>끄기</button>
+            </div>
+          </div>
+          <div className="sm-seg two" role="group" aria-label="범위">
+            <button className={scope === "area" ? "on" : ""} onClick={() => setScope("area")}>이 지역 {CAT_META[pop].label.split("·")[0]}</button>
+            <button className={scope === "all" ? "on" : ""} onClick={() => setScope("all")}>서울 전체</button>
+          </div>
+          <button className={`sm-theme all${cat === pop && !theme ? " on" : ""}`} onClick={() => { setCat(pop); setTheme(""); setSelectedId(null); }}>모든 테마</button>
+          <div className="sm-theme-grid">
+            {THEMES[pop].map(([label]) => (
+              <button key={label} className={`sm-theme${cat === pop && theme === label ? " on" : ""}`} onClick={() => { setCat(pop); setTheme(label); setSelectedId(null); }}>{label}</button>
+            ))}
+          </div>
+          <button className="sm-theme only" onClick={() => { setCat(pop); setTheme(""); setSelectedId(null); setPop(null); }}>
+            {CAT_META[pop].label.split("·")[0]}만 보기
+          </button>
+        </div>
+      )}
+
+      <button className="sm-info-btn" onClick={() => setInfo("intro")} aria-label="소개·제보·정보 출처">
+        <span aria-hidden>ⓘ</span> 안내·제보
+      </button>
+
+      {info && (
+        <div className="sm-modal-bg" onClick={() => setInfo(null)}>
+          <div className="sm-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button className="sm-modal-x" aria-label="닫기" onClick={() => setInfo(null)}>×</button>
+            <div className="sm-modal-brand">
+              <span className="logo">S</span>
+              <div><b>SHOWDAY MAP</b><small>공연·전시·축제·체험, 오늘 내 근처에서</small></div>
+            </div>
+            <div className="sm-tabs" role="tablist">
+              {([["intro", "소개"], ["report", "제보하기"], ["source", "정보 출처"]] as const).map(([v, l]) => (
+                <button key={v} role="tab" aria-selected={info === v} className={info === v ? "on" : ""} onClick={() => setInfo(v)}>{l}</button>
+              ))}
+            </div>
+            <div className="sm-modal-body">
+              {info === "intro" && (
+                <>
+                  <h2>오늘, 내 근처에서 뭘 할까요?</h2>
+                  <p>SHOWDAY MAP은 공연·전시·축제·체험 정보를 지도 위에 모아, 아이부터 어른, 부모님까지 함께 즐길 곳을 가까운 순으로 찾게 도와드립니다.</p>
+                  <ul>
+                    <li><b>내 근처</b> — 위치를 켜면 3·5·10km 안의 행사만 거리순으로 보여 드려요.</li>
+                    <li><b>비 오는 날</b> — 비·눈이 오면 실내 행사를 먼저 보여 드려요.</li>
+                    <li><b>유형이 한눈에</b> — 공연·전시·축제·체험을 색과 아이콘으로 구분하고, 0원 행사는 표시해 드려요.</li>
+                    <li><b>시간 맞춤 코스</b> — 1시간부터 하루까지, 시간에 맞는 코스를 짜 드려요.</li>
+                  </ul>
+                  <p className="muted">목록·상세 검색이 필요하면 <a href={MAIN_SITE}>showday.kr</a>에서 찾아보세요.</p>
+                </>
+              )}
+              {info === "report" && (
+                <>
+                  <h2>잘못된 정보를 알려 주세요</h2>
+                  <p>일정·요금이 다르거나, 위치가 틀렸거나, 빠진 행사가 있으면 알려 주세요. 확인 후 반영합니다.</p>
+                  <ul>
+                    <li>행사 이름과 날짜, 장소</li>
+                    <li>무엇이 다른지 (일정 / 요금 / 위치 / 종료·취소 / 빠진 행사)</li>
+                    <li>확인할 수 있는 공식 링크가 있으면 함께</li>
+                  </ul>
+                  {REPORT_URL ? (
+                    <a className="sm-modal-cta" href={REPORT_URL} target="_blank" rel="noopener noreferrer">제보하러 가기</a>
+                  ) : (
+                    <span className="sm-modal-cta off">제보 창구 준비 중입니다</span>
+                  )}
+                  {selected && <p className="muted">지금 보고 있는 행사: {selected.title}</p>}
+                </>
+              )}
+              {info === "source" && (
+                <>
+                  <h2>정보 출처</h2>
+                  <p>SHOWDAY MAP이 활용하는 정보의 제공처입니다. 일정·요금·예약은 바뀔 수 있으니 방문 전 공식 링크에서 꼭 확인해 주세요.</p>
+                  <dl className="sm-src">
+                    {SOURCES.map(([name, url, desc]) => (
+                      <div key={name}>
+                        <dt>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{name} ↗</a> : name}</dt>
+                        <dd>{desc}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              )}
+            </div>
+            <button className="sm-modal-go" onClick={() => setInfo(null)}>오늘 갈 곳 찾기 →</button>
+          </div>
+        </div>
+      )}
 
       {toast && <div className="sm-toast">{toast}</div>}
 
