@@ -501,7 +501,22 @@ export default function Page() {
 
       <div className="sm-mode" role="tablist" aria-label="SHOWDAY 주요 화면">
         <button className="on" role="tab" aria-selected="true">지도</button>
-        <a role="tab" aria-selected="false" href={`${MAIN_SITE}/?${new URLSearchParams({...(q.trim()?{q:q.trim()}:{}),...(when.length?{w:when.join(",")} : {}),...(audience!=="전체"?{a:audience}:{}),...(cat!=="전체"?{c:cat}:{}),...(origin?.label && origin.label!=="내 위치"?{d:origin.label}: {})}).toString()}`}>공연검색</a>
+        <button
+          type="button"
+          role="tab"
+          aria-selected="false"
+          onClick={() => {
+            const params = new URLSearchParams({
+              ...(q.trim() ? { q: q.trim() } : {}),
+              ...(when.length ? { w: when.join(",") } : {}),
+              ...(audience !== "전체" ? { a: audience } : {}),
+              ...(cat !== "전체" ? { c: cat } : {}),
+              ...(origin?.label && origin.label !== "내 위치" ? { d: origin.label } : {}),
+              from: "map",
+            });
+            window.location.assign(`${MAIN_SITE}/?${params.toString()}#shows`);
+          }}
+        >공연검색</button>
       </div>
       <a className="sm-arena-link" href="https://arena.showday.kr" aria-label="SEOUL ARENA로 이동">SEOUL ARENA <span>→</span></a>
 
