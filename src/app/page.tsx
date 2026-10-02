@@ -29,9 +29,10 @@ const THEMES: Record<CatKey, [string, RegExp][]> = {
 
 const TIMES: [string, string, number][] = [["1h", "1시간", 1], ["3h", "3시간", 2], ["half", "반나절", 3], ["day", "하루", 4]];
 
-const REPORT_URL = process.env.NEXT_PUBLIC_REPORT_URL || "";
-// 제휴문의: 카카오톡 채널 (환경변수로 바꿀 수 있음)
+// 제휴문의·제보: 카카오톡 채널 (환경변수로 바꿀 수 있음)
 const PARTNER_URL = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || "https://pf.kakao.com/_SnjrX/chat";
+// 제보 창구: 따로 지정하지 않으면 카카오톡 채널로 연결
+const REPORT_URL = process.env.NEXT_PUBLIC_REPORT_URL || PARTNER_URL;
 const SOURCES: [string, string, string][] = [
   ["공연예술통합전산망(KOPIS)", "https://www.kopis.or.kr", "공연 일정·장소·요금"],
   ["문화포털(한국문화정보원)", "https://www.culture.go.kr", "전시·공연·문화행사"],
@@ -847,7 +848,7 @@ export default function Page() {
                     <li>확인할 수 있는 공식 링크가 있으면 함께</li>
                   </ul>
                   {REPORT_URL ? (
-                    <a className="sm-modal-cta" href={REPORT_URL} target="_blank" rel="noopener noreferrer">제보하러 가기</a>
+                    <a className="sm-modal-cta" href={REPORT_URL} target="_blank" rel="noopener noreferrer">카카오톡으로 제보하기</a>
                   ) : (
                     <span className="sm-modal-cta off">제보 창구 준비 중입니다</span>
                   )}
