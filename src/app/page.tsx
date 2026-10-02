@@ -8,7 +8,6 @@ import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
 const MAIN_SEARCH = "https://showday.kr/search";
-const KAKAO_PARTNER = "https://pf.kakao.com/_SnjrX";
 const SEOUL = { lat: 37.5665, lng: 126.978 };
 
 const DISTRICTS: Record<string, [number, number]> = {
@@ -31,6 +30,8 @@ const THEMES: Record<CatKey, [string, RegExp][]> = {
 const TIMES: [string, string, number][] = [["1h", "1시간", 1], ["3h", "3시간", 2], ["half", "반나절", 3], ["day", "하루", 4]];
 
 const REPORT_URL = process.env.NEXT_PUBLIC_REPORT_URL || "";
+// 제휴문의: 카카오톡 채널 (환경변수로 바꿀 수 있음)
+const PARTNER_URL = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_URL || "https://pf.kakao.com/_SnjrX/chat";
 const SOURCES: [string, string, string][] = [
   ["공연예술통합전산망(KOPIS)", "https://www.kopis.or.kr", "공연 일정·장소·요금"],
   ["문화포털(한국문화정보원)", "https://www.culture.go.kr", "전시·공연·문화행사"],
@@ -49,6 +50,11 @@ const SRC_LABEL: Record<string, string> = {
   YOUTH_PROGRAM: "청소년 활동 프로그램(공공데이터)",
   FOREST_EDU: "산림교육 프로그램(공공데이터)",
 };
+type Amenity = { kind: string; name: string; address?: string; dist_m: number; extra?: Record<string, any> };
+const AMEN_LABEL: Record<string, string> = { toilet: "화장실", rest: "쉼터·벤치", park: "공원", trail: "둘레길·숲길", barrier_free: "무장애 시설" };
+// 이동 안내 모드별로 보여줄 종류
+const MODE_KINDS: Record<string, string[]> = { easy: ["rest", "toilet", "barrier_free"], accessible: ["barrier_free"], walk: ["park", "trail"], rest: ["toilet", "rest"] };
+const fmtM = (m: number) => (m < 1000 ? `${m}m` : `${(m / 1000).toFixed(1)}km`);
 type Story = { title: string; desc: string; link: string; blogger: string; date: string };
 
 /** 진행 상태 뱃지: 오늘 기준 종료/진행 중/오늘 마감/곧 시작 */
@@ -202,6 +208,7 @@ export default function Page() {
   const [theme, setTheme] = useState("");
   const [scope, setScope] = useState<"area" | "all">("area");
   const [stories, setStories] = useState<{ id: string; configured: boolean; items: Story[] } | null>(null);
+  const [amen, setAmen] = useState<{ id: string; configured: boolean; items: Amenity[] } | null>(null);
   const [info, setInfo] = useState<null | "intro" | "report" | "source">(null);
   const [toast, setToast] = useState("");
   const initId = useRef<string | null>(null);
@@ -295,6 +302,18 @@ export default function Page() {
       .then((r) => r.json())
       .then((d) => { if (!ignore) setStories({ id: ev.id, configured: !!d?.configured, items: Array.isArray(d?.items) ? d.items : [] }); })
       .catch(() => { if (!ignore) setStories({ id: ev.id, configured: false, items: [] }); });
+    return () => { ignore = true; };
+  }, [selectedId, events]);
+  // 선택한 행사 주변(500m) 편의 정보: 공공데이터를 Supabase에 모아 둔 것을 불러온다
+  useEffect(() => {
+    const ev = events.find((x) => x.id === selectedId);
+    if (!ev || ev.lat == null || ev.lng == null) { setAmen(null); return; }
+    let ignore = false;
+    setAmen(null);
+    fetch(`/api/amenities?lat=${ev.lat}&lng=${ev.lng}&r=500`)
+      .then((r) => r.json())
+      .then((d) => { if (!ignore) setAmen({ id: ev.id, configured: !!d?.configured, items: Array.isArray(d?.items) ? d.items : [] }); })
+      .catch(() => { if (!ignore) setAmen({ id: ev.id, configured: false, items: [] }); });
     return () => { ignore = true; };
   }, [selectedId, events]);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(""), 2600); }
@@ -465,6 +484,12 @@ export default function Page() {
     () => (timeN ? buildCourse(results as Row[], timeN, !!weather?.bad) : []),
     [results, timeN, weather?.bad]
   );
+  const myAmen = amen && selected && amen.id === selected.id ? amen : null;
+  const amenCount = (mode: string) => {
+    if (!myAmen?.configured) return "";
+    const n = myAmen.items.filter((a) => MODE_KINDS[mode].includes(a.kind)).length;
+    return n ? ` ${n}` : "";
+  };
   const selDist = selected && origin ? haversine(origin.lat, origin.lng, selected.lat!, selected.lng!) : null;
   const activeFilters = cat !== "전체" || !!theme || scope === "all" || when.length > 0 || audience !== "전체" || !!time || !!q.trim();
 
@@ -534,12 +559,6 @@ export default function Page() {
         <button aria-label="축소" onClick={() => mapRef.current?.zoom(-1)}>−</button>
       </div>
       <button className="sm-loc" aria-label="내 위치로" onClick={() => locate()}><Ico n="locate" size={22} /></button>
-
-      <a className="sm-partner-fab" href={KAKAO_PARTNER} target="_blank" rel="noopener noreferrer" aria-label="SHOWDAY 카카오톡 제휴 문의">
-        <span className="sm-partner-kakao" aria-hidden="true">TALK</span>
-        <span className="sm-partner-copy"><b>제휴문의</b><small>카카오톡 상담</small></span>
-        <span className="sm-partner-arrow" aria-hidden="true">↗</span>
-      </a>
 
       <aside className="sm-panel">
         <div className="sm-head">
@@ -716,10 +735,10 @@ export default function Page() {
             <section className="sm-now-section compact">
               <div className="sm-now-title"><b>이곳과 함께</b><em>주변까지</em></div>
               <div className="sm-now-grid">
-                <button onClick={() => setRouteMode("easy")}>🚶 <span>편한 길</span></button>
-                <button onClick={() => setRouteMode("accessible")}>♿ <span>이동 편의</span></button>
-                <button onClick={() => setRouteMode("walk")}>🌳 <span>주변 산책</span></button>
-                <button onClick={() => setRouteMode("rest")}>🪑 <span>쉬어가기</span></button>
+                <button onClick={() => setRouteMode("easy")}>🚶 <span>편한 길{amenCount("easy")}</span></button>
+                <button onClick={() => setRouteMode("accessible")}>♿ <span>이동 편의{amenCount("accessible")}</span></button>
+                <button onClick={() => setRouteMode("walk")}>🌳 <span>주변 산책{amenCount("walk")}</span></button>
+                <button onClick={() => setRouteMode("rest")}>🪑 <span>쉬어가기{amenCount("rest")}</span></button>
               </div>
             </section>
           </>
@@ -763,9 +782,28 @@ export default function Page() {
           </div>
           <p>{routeMode === "easy" ? "계단·급경사 부담을 줄이고 휴식하기 편한 이동을 우선합니다." : routeMode === "accessible" ? "휠체어·보행보조기 이용자는 확인된 접근성 정보만 참고합니다. 미확인 구간은 가능하다고 표시하지 않습니다." : routeMode === "walk" ? "공원·하천·숲길처럼 걷기 좋은 공간을 함께 확인합니다." : "벤치·화장실·카페 등 쉬어갈 수 있는 장소를 함께 확인합니다."}</p>
           {selected ? <div className="sm-route-selected"><span>선택한 장소</span><b>{selected.venue || selected.title}</b><div><a href={`https://map.kakao.com/link/to/${encodeURIComponent(selected.venue || selected.title)},${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer">카카오맵 길찾기</a><a href={`https://map.naver.com/p/search/${encodeURIComponent(selected.venue || selected.title)}`} target="_blank" rel="noopener noreferrer">네이버 지도</a></div></div> : <p className="sm-route-tip">지도에서 장소를 하나 선택하면 이동 경로를 바로 확인할 수 있어요.</p>}
+          {selected && (() => {
+            const list = (myAmen?.items || []).filter((a) => MODE_KINDS[routeMode].includes(a.kind)).slice(0, 6);
+            return (
+              <div className="sm-amen">
+                <div className="sm-amen-h">{selected.venue || selected.title} 주변 500m</div>
+                {!myAmen ? <p className="sm-amen-empty">정보를 불러오는 중…</p>
+                  : !myAmen.configured ? <p className="sm-amen-empty">주변 편의 정보를 준비 중이에요.</p>
+                  : list.length === 0 ? <p className="sm-amen-empty">확인된 정보가 아직 없어요. 현장 안내를 함께 확인해 주세요.</p>
+                  : <ul>{list.map((a, i) => (
+                      <li key={i}><span className="k">{AMEN_LABEL[a.kind] || a.kind}</span><b>{a.name}</b><em>{fmtM(a.dist_m)}</em></li>
+                    ))}</ul>}
+              </div>
+            );
+          })()}
           <div className="sm-route-safety">※ 경사·계단·휠체어 통행 가능 여부는 현장과 지도 제공자의 최신 정보를 반드시 함께 확인해 주세요.</div>
         </div>
       )}
+
+      <a className="sm-partner" href={PARTNER_URL} target="_blank" rel="noopener noreferrer" aria-label="카카오톡 채널로 제휴 문의하기">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#191600" d="M12 3.5c-5 0-9 3.1-9 7 0 2.5 1.7 4.7 4.2 6l-1 3.7c-.1.3.3.6.6.4l4.4-2.9c.3 0 .5.1.8.1 5 0 9-3.1 9-7s-4-7.3-9-7.3z"/></svg>
+        <span>제휴문의<small>카카오톡 채널</small></span>
+      </a>
 
       <button className="sm-info-btn" onClick={() => setInfo("intro")} aria-label="소개·제보·정보 출처">
         <Ico n="info" size={16} /> 안내·제보
@@ -795,6 +833,7 @@ export default function Page() {
                     <li><b>유형이 한눈에</b> — 공연·전시·축제·체험을 색과 아이콘으로 구분하고, 0원 행사는 표시해 드려요.</li>
                     <li><b>시간 맞춤 코스</b> — 1시간부터 하루까지, 시간에 맞는 코스를 짜 드려요.</li>
                   </ul>
+                  <p><a className="sm-modal-cta kakao" href={PARTNER_URL} target="_blank" rel="noopener noreferrer">카카오톡으로 제휴 문의하기</a></p>
                   <p className="muted">더 많은 공연 정보와 예매 소식은 <a href={MAIN_SITE}>showday.kr</a>에서 찾아보세요.</p>
                 </>
               )}

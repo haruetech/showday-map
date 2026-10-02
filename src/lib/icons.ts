@@ -1,5 +1,6 @@
 // 화면 전체에서 쓰는 선(line) 아이콘 — 이모티콘 대신 사용. 24x24 기준, 정적 문자열이라 그대로 그려도 안전하다.
 export const ICONS: Record<string, string> = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.2-4.2"/>',
   mic: '<rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"/>',
   frame: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.7"/><path d="m21 16-5-5-9 9"/>',
   sparkle: '<path d="M11 3l1.8 4.7L17.5 9.5l-4.7 1.8L11 16l-1.8-4.7L4.5 9.5l4.7-1.8z"/><path d="M18.5 14v5M16 16.5h5"/>',

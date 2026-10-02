@@ -1,14 +1,19 @@
-SHOWDAY MAP 2.5 - 수정파일만
+SHOWDAY MAP - 수정파일만 (같은 경로에 덮어쓰기)
+1) src/app/globals.css  - 폰트(Gothic A1 단일)·컬러(연시색+화이트) 전체 통일, 겹쳐 쓰던 옛 스타일 정리
+2) src/app/page.tsx     - 우측 하단 제휴문의(카카오톡 채널) 버튼 + 안내 모달 내 제휴문의 버튼
+3) src/app/layout.tsx   - Gothic A1 굵기 500/800 추가
+4) src/lib/icons.ts     - 검색 아이콘 추가(기존엔 없어서 검색창 왼쪽이 비어 있었음)
+카톡 채널: 기본값 https://pf.kakao.com/_SnjrX/chat  (Vercel 환경변수 NEXT_PUBLIC_KAKAO_CHANNEL_URL 로 변경 가능)
 
-교체 파일
-1) src/app/page.tsx
-2) src/app/globals.css
+[추가] 주변 편의 정보 (편한 길·이동 편의·주변 산책·쉬어가기)
+5) supabase/amenities.sql            - Supabase SQL Editor에서 1회 실행 (테이블+반경검색 함수)
+6) scripts/collect-amenities.mjs     - 공공데이터 수집 → Supabase 저장
+7) .github/workflows/collect-amenities.yml - 매일 새벽 4시 자동 수집
+8) src/app/api/amenities/route.ts    - 화면용 API (신규)
+9) src/app/page.tsx, globals.css     - 이동 안내 팝업에 실제 목록 표시 (위 수정본을 이 버전으로 덮어쓰기)
 
-주요 변경
-- 지도 ↔ 공연검색 검색 상태 연결
-- q/w/a/c/d URL 파라미터 유지
-- 상세 하단의 의미가 겹치는 공유/캘린더 버튼 제거
-- 상세 하단은 예매·신청 / 공식 안내 등 핵심 행동 1개로 단순화
-- 상단 공유 기능은 유지
-
-주의: 전체 프로젝트를 교체하지 말고 위 2개 파일만 동일 경로에 덮어쓰세요.
+순서
+ a. data.go.kr 에서 활용신청(무료): 전국공중화장실표준데이터, 전국도시공원정보표준데이터, 한국관광공사 무장애 여행정보
+ b. SQL 실행 → 로컬에서 먼저 확인:  DATA_GO_KR_KEY=키 node scripts/collect-amenities.mjs --dry
+ c. GitHub 저장소 Secrets: DATA_GO_KR_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY → Actions에서 수동 1회 실행
+ d. Vercel 환경변수: SUPABASE_URL, SUPABASE_ANON_KEY (service 키는 Vercel에 넣지 마세요)
