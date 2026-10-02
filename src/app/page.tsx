@@ -8,6 +8,7 @@ import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
 const MAIN_SEARCH = "https://showday.kr/search";
+const KAKAO_PARTNER = "https://pf.kakao.com/_SnjrX";
 const SEOUL = { lat: 37.5665, lng: 126.978 };
 
 const DISTRICTS: Record<string, [number, number]> = {
@@ -533,6 +534,12 @@ export default function Page() {
         <button aria-label="축소" onClick={() => mapRef.current?.zoom(-1)}>−</button>
       </div>
       <button className="sm-loc" aria-label="내 위치로" onClick={() => locate()}><Ico n="locate" size={22} /></button>
+
+      <a className="sm-partner-fab" href={KAKAO_PARTNER} target="_blank" rel="noopener noreferrer" aria-label="SHOWDAY 카카오톡 제휴 문의">
+        <span className="sm-partner-kakao" aria-hidden="true">TALK</span>
+        <span className="sm-partner-copy"><b>제휴문의</b><small>카카오톡 상담</small></span>
+        <span className="sm-partner-arrow" aria-hidden="true">↗</span>
+      </a>
 
       <aside className="sm-panel">
         <div className="sm-head">

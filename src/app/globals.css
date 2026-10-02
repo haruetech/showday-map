@@ -370,3 +370,66 @@ button{cursor:pointer;border:0;background:none}
 .sm-now-head.decision{border-bottom:0}.sm-decision-card{margin-top:12px;padding:13px;border:1px solid #e4e8ee;border-radius:14px;background:#fafbfc}.sm-decision-card>strong{display:block;font-size:13px;line-height:1.45;color:#172033}.sm-decision-facts{display:grid;gap:6px;margin-top:10px}.sm-decision-facts span{font-size:10px;font-weight:750;color:#344054}.sm-decision-facts span.check{color:#667085}.sm-now-suggest{margin-top:12px;padding:10px;border-radius:10px;background:#eef3ff}.sm-now-suggest small{font-size:8px;font-weight:900;letter-spacing:.08em;color:#315ee8}.sm-now-suggest p{margin:4px 0 0;font-size:10px;line-height:1.55;color:#344054}.sm-decision-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.sm-decision-actions a,.sm-decision-actions button{display:grid;place-items:center;height:35px;border-radius:9px;border:1px solid #dfe4ea;background:#fff;color:#273142;text-decoration:none;font-size:10px;font-weight:850}.sm-decision-actions a:first-child,.sm-decision-actions button:first-child{border-color:#172b4d;background:#172b4d;color:#fff}.sm-now-section.compact{padding-bottom:0}
 @media(max-width:900px){.sm-now-v3{width:250px}}
 @media(max-width:720px){.sm-now-v3{width:auto;max-height:265px;padding:13px}.sm-now-v3 .sm-now-head b{font-size:16px}.sm-now-section.hero{padding-top:10px}.sm-fill-time{height:38px}.sm-mini-course{display:none}.sm-avoid{flex-wrap:nowrap;overflow-x:auto}.sm-avoid button{white-space:nowrap}.sm-decision-card{margin-top:8px}.sm-now-section.compact{display:none}}
+
+/* SHOWDAY MAP 3.1 — typography / color polish + Kakao partner CTA */
+:root{
+  --sd-text:#171c2b;
+  --sd-sub:#667085;
+  --sd-accent:#b85f35;
+  --sd-accent-soft:#fff3ea;
+  --sd-border:#e8e3dc;
+}
+.sm-panel{background:#fffdfa;border:1px solid rgba(91,61,45,.08)}
+.sm-head{padding:18px 18px 15px}
+.sm-headrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sm-brand{font-size:12px;font-weight:850;line-height:1;color:#6f6259;letter-spacing:.015em}
+.sm-brand small{margin-left:5px;color:var(--sd-accent);font-size:9px;font-weight:850;letter-spacing:.06em}
+.sm-tools{display:flex;align-items:center;gap:5px}
+.sm-tools button{min-height:28px;padding:0 8px;border-radius:8px;color:#8b4a2e;font-size:10px;font-weight:750;line-height:1;background:transparent}
+.sm-tools button:hover{background:var(--sd-accent-soft)}
+.sm-panel h1{margin:15px 0 0;color:var(--sd-text);font-size:30px;line-height:1.12;font-weight:850;letter-spacing:-.05em}
+.sm-sub{margin:7px 0 0!important;color:var(--sd-sub)!important;font-size:12.5px!important;font-weight:550;line-height:1.55!important;letter-spacing:-.015em}
+.sm-map-search{margin-top:15px;height:50px;border-color:#e1e5eb;border-radius:14px;box-shadow:0 3px 12px rgba(16,24,40,.035)}
+.sm-map-search input{font-size:13px;font-weight:500;letter-spacing:-.02em}
+.sm-map-search input::placeholder{color:#98a2b3}
+.sm-suggest{gap:6px;margin-top:10px}
+.sm-suggest button{min-height:32px;padding:0 11px;border-color:#e6e8ec;color:#475467;font-size:11px;font-weight:700;letter-spacing:-.015em}
+.sm-suggest button:hover{border-color:#d6a58b;background:#fff7f2;color:#8b4a2e}
+.sm-weather{margin-top:10px;padding:10px 12px;background:#edf7f1;color:#344054;font-size:11px;line-height:1.45}
+.sm-weather .w{color:#2f4538;font-size:11px;font-weight:800}.sm-weather .m{color:#667085;font-weight:550}
+.sm-weather.bad{background:#eef3fb}.sm-weather.bad .w{color:#31558f}
+.sm-list-head{margin-top:10px;padding:14px 18px 12px;border-top:1px solid #eee9e3;color:#3a2a22;font-size:13px;line-height:1.3;font-weight:800;letter-spacing:-.02em}
+.sm-list-head b{color:var(--sd-accent)}.sm-list-head em{color:#7d746e;font-size:10px;font-weight:650}
+.sm-list{padding:0 10px 14px}
+.sm-list li button{gap:11px;padding:10px 8px;border-radius:12px}
+.sm-list li button:hover,.sm-list li button.on{background:#fff5ed}
+.sm-list .th{width:58px;height:76px;border-radius:9px}
+.sm-list .t{gap:3px;padding-top:1px}
+.sm-list .t b{color:#38271f;font-size:13px;line-height:1.32;font-weight:800;letter-spacing:-.025em}
+.sm-list .t>span:not(.meta){color:#776d67;font-size:10px;line-height:1.35}
+.sm-list .meta{gap:4px;margin-bottom:1px;min-height:18px}
+.sm-list .meta i{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;font-size:9px;line-height:1.25;font-weight:800}
+.sm-list .dist{background:#fff;color:#8b4a2e;border:1px solid #e8b79f}
+.sm-list .free{background:#fff;color:#d83a3a;border:1px solid #efb0b0}
+.sm-list .st.live{background:#e94b50}.sm-list .st.soon{background:#c96a2a}
+
+.sm-partner-fab{position:absolute;z-index:24;right:72px;bottom:14px;display:flex;align-items:center;gap:9px;min-height:48px;padding:7px 11px 7px 8px;border:1px solid rgba(38,31,0,.10);border-radius:15px;background:#fee500;color:#211f16;text-decoration:none;box-shadow:0 9px 26px rgba(30,26,0,.18);transition:transform .16s ease,box-shadow .16s ease}
+.sm-partner-fab:hover{transform:translateY(-2px);box-shadow:0 13px 32px rgba(30,26,0,.22)}
+.sm-partner-kakao{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#211f16;color:#fee500;font-size:8px;font-weight:900;letter-spacing:.04em}
+.sm-partner-copy{display:flex;flex-direction:column;gap:1px;min-width:0}.sm-partner-copy b{font-size:12px;line-height:1.2;font-weight:900;letter-spacing:-.025em}.sm-partner-copy small{font-size:9px;line-height:1.2;font-weight:650;color:#5d5640;white-space:nowrap}
+.sm-partner-arrow{margin-left:1px;font-size:13px;font-weight:800;color:#5d5640}
+
+@media(max-width:768px){
+  .sm-head{padding:13px 14px 11px}
+  .sm-panel h1{margin-top:11px;font-size:25px;line-height:1.13}
+  .sm-sub{font-size:11.5px!important}
+  .sm-map-search{height:47px;margin-top:12px}
+  .sm-suggest button{min-height:31px;font-size:10.5px}
+  .sm-weather{padding:9px 10px}
+  .sm-list-head{padding:12px 14px 10px}
+  .sm-list .t b{font-size:12.5px}
+  .sm-partner-fab{position:fixed;right:10px;bottom:282px;min-height:43px;padding:6px 9px 6px 6px;border-radius:13px;gap:7px}
+  .sm-partner-kakao{width:31px;height:31px;border-radius:9px;font-size:7px}
+  .sm-partner-copy b{font-size:11px}.sm-partner-copy small{font-size:8px}
+  .sm-partner-arrow{display:none}
+}
