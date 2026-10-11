@@ -7,7 +7,7 @@ import { ICONS } from "@/lib/icons";
 import { CAT_META, CAT_ORDER, catKey, type CatKey } from "@/lib/eventMeta";
 
 const MAIN_SITE = "https://showday.kr";
-const MAIN_SEARCH = "https://showday.kr/search";
+const MAIN_SEARCH = "https://api.showday.kr/search";
 const SEOUL = { lat: 37.5665, lng: 126.978 };
 
 const DISTRICTS: Record<string, [number, number]> = {
